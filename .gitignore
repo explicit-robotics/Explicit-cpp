@@ -1,0 +1,7 @@
+
+build
+bin
+tmp
+
+.vscode
+.DS_store
