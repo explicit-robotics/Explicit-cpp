@@ -1,7 +1,10 @@
 #include <iostream>
 #include <Eigen/Dense>
 
+#include "exp_math.h"
 #include "exp_utils.h"
+#include "exp_robots.h"
+#include "exp_constants.h"
 
 bool isSymmetric( const Eigen::MatrixXd &M )
 {

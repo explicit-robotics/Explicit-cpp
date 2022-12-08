@@ -5,37 +5,43 @@
 #include "exp_utils.h"
 #include "exp_math.h"
 #include "exp_robots.h"
+#include "exp_constants.h"
 
 int main( )
 {
 
 	// The number of degrees of freedom of the robot
-	int nq = 3;
+	int nq = 8;
 
-	Eigen::VectorXd JointTypes( nq ); 
-	Eigen::MatrixXd AxisOrigins( 3, nq ); 
-	Eigen::MatrixXd AxisDirections( 3, nq ); 
+	SnakeBot robot( 1, "first_robot" , nq, 1.0 , 1.0  );
 
-	JointTypes << 1, 1, 1;
+	std::cout << robot.JointTwists << std::endl;
+
+	Eigen::VectorXd q_arr( nq ); 
+	q_arr << 1, 1, 1, 1, 1, 1, 1, 1;
+
+	Eigen::MatrixXd tmp1 = robot.getForwardKinematics( q_arr );
+	Eigen::MatrixXd tmp2 = robot.getForwardKinematics( q_arr, 1, TYPE_COM );
+
+	std::cout << tmp1 << std::endl;
+	std::cout << tmp2 << std::endl;
+
+	Eigen::MatrixXd JS = robot.getSpatialJacobian( q_arr );	
 	
-	AxisOrigins << 0, 1, 2, 
-				   0, 0, 0,
-				   0, 0, 0;	
+	std::cout << JS << std::endl;
 
-	AxisDirections << 0, 0, 0, 
-				      0, 0, 0,
-				      1, 1, 1;
+	Eigen::MatrixXd JH = robot.getHybridJacobian( q_arr );	
+	
+	std::cout << JH << std::endl;	
+	std::cout << robot.M_Mat << std::endl;	
 
-	RobotPrimitive robot( 1, "first_robot" , JointTypes, AxisOrigins, AxisDirections );
+	Eigen::MatrixXd JB = robot.getBodyJacobian( q_arr, 3, TYPE_COM );	
+	
+	std::cout << JB << std::endl;	
 
-	robot.setJointTwists( );
+	Eigen::MatrixXd M = robot.getMassMatrix( q_arr );	
 
-	Eigen::VectorXd q_arr( 3 ); 
-	q_arr << 1, 1, 1;
-
-	Eigen::MatrixXd tmp = robot.getForwardKinematics( q_arr );
-
-	std::cout << tmp << std::endl;
+	std::cout << M << std::endl;
 
 	return 0;
 }

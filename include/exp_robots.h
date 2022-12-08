@@ -11,11 +11,15 @@
 #ifndef EXP_ROBOT
 #define EXP_ROBOT
 
+#include "exp_constants.h"
 #include <Eigen/Dense>
 
+/*
+	@brief The primitive robot class which will be inherited for all robots
+*/
 class RobotPrimitive
 {
-	private:
+	public:
 		int ID;
 		int parentID;
 		const char* Name;
@@ -68,38 +72,59 @@ class RobotPrimitive
 	public:
 
 		/* 
-			Constructors
+			Default Constructor
 		*/
-		RobotPrimitive( );
+		RobotPrimitive( ) {};
 
 		/*
 			Constructor
-
 		*/
-		RobotPrimitive( const int ID, const char* Name, const Eigen::VectorXd &JointTypes, const Eigen::MatrixXd &AxisOrigins, const Eigen::MatrixXd &AxisDirections );
-
-		// void init( );
+		RobotPrimitive( const int ID, const char* Name );
 
 		void setJointTwists(  );
 
 		Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr );		
 
+		Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr, const int bodyID, const int type );
+
+		// Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr, const int bodyID, const Eigen::Vector3d position );
+
 		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr );		
 
-		Eigen::MatrixXd getHybridJacobian( const Eigen::VectorXd &q_arr );				
+		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr, const int bodyID );		
 
-		Eigen::MatrixXd getBodyJacobian( const Eigen::VectorXd &q_arr );		
+		Eigen::MatrixXd getHybridJacobian( const Eigen::VectorXd &q_arr );
 
-		// void getMassMatrix(  );		
+		Eigen::MatrixXd getBodyJacobian( const Eigen::VectorXd &q_arr, const int bodyID, const int type );	
 
-		// void getCoriolisMatrix(  );		
+		Eigen::MatrixXd getMassMatrix( const Eigen::VectorXd &q_arr );		
 
 		// void switchJoint(  );		
+
+		// void init( );			
+		
+		// void getCoriolisMatrix(  );		
 
 		// void addKinematics(  );		
 
 		
 
 };
+
+class SnakeBot : public RobotPrimitive
+{
+	private:
+
+	public:
+		SnakeBot( ) {};
+
+		SnakeBot( const int ID, const char* name, const int nq, const double m, const double l );
+
+		// SnakeBot( const int ID, const char* name, const int nq, const Eigen::VectorXd &m_arr, const Eigen::VectorXd &m_arr );
+
+};
+
+
+
 
 #endif

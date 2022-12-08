@@ -4,6 +4,8 @@
 
 #include "exp_math.h"
 #include "exp_utils.h"
+#include "exp_robots.h"
+#include "exp_constants.h"
 
 Eigen::Matrix3d vec2SkewSym( const Eigen::Vector3d &v )
 {
@@ -56,11 +58,11 @@ Eigen::Matrix4d getExpSE3( const Eigen::Vector3d &w, const Eigen::Vector3d &v, c
 
 Eigen::MatrixXd getAdjoint( const Eigen::Matrix4d &H )
 {
-	Eigen::MatrixXd Adj = Eigen::Matrix4d::Zero( 6, 6 );
+	Eigen::MatrixXd Adj = Eigen::MatrixXd::Zero( 6, 6 );
 
 	Adj.block< 3, 3 >( 0, 0 ) = H.block< 3, 3 >( 0, 0 );
 	Adj.block< 3, 3 >( 3, 3 ) = H.block< 3, 3 >( 0, 0 );
-	Adj.block< 3, 3 >( 3, 0 ) = vec2SkewSym( H.block< 3, 1 >( 3, 0 )  );
+	Adj.block< 3, 3 >( 0, 3 ) = vec2SkewSym( H.block< 3, 1 >( 0, 3 )  ) * H.block< 3, 3 >( 0, 0 );
 
 	return Adj;
 
@@ -68,11 +70,11 @@ Eigen::MatrixXd getAdjoint( const Eigen::Matrix4d &H )
 
 Eigen::MatrixXd getInvAdjoint( const Eigen::Matrix4d &H )
 {
-	Eigen::MatrixXd Adj = Eigen::Matrix4d::Zero( 6, 6 );
+	Eigen::MatrixXd Adj = Eigen::MatrixXd::Zero( 6, 6 );
 
-	Adj.block< 3, 3 >( 0, 0 ) = H.block< 3, 3 >( 0, 0 ).transpose( );
-	Adj.block< 3, 3 >( 3, 3 ) = H.block< 3, 3 >( 0, 0 ).transpose( );
-	Adj.block< 3, 3 >( 3, 0 ) = H.block< 3, 3 >( 0, 0 ).transpose( ) * vec2SkewSym( H.block< 3, 1 >( 3, 0 )  );
+	Adj.block< 3, 3 >( 0, 0 ) =  H.block< 3, 3 >( 0, 0 ).transpose( );
+	Adj.block< 3, 3 >( 3, 3 ) =  H.block< 3, 3 >( 0, 0 ).transpose( );
+	Adj.block< 3, 3 >( 0, 3 ) = -H.block< 3, 3 >( 0, 0 ).transpose( ) * vec2SkewSym( H.block< 3, 1 >( 0, 3 )  );
 
 	return Adj;
 
