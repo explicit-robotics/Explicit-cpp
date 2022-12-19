@@ -1,5 +1,5 @@
 /*
- * EXPlicit - A robotics toolbox based on produce of exponential formula.
+ * EXPlicit - A robotics toolbox based on the product of exponential formulae.
  *
  * Copyright (c) 2022 MIT
  * Authors
@@ -122,6 +122,16 @@ class SnakeBot : public RobotPrimitive
 
 		// SnakeBot( const int ID, const char* name, const int nq, const Eigen::VectorXd &m_arr, const Eigen::VectorXd &m_arr );
 
+};
+
+class iiwa14 : public RobotPrimitive
+{
+	private:
+
+	public:
+		iiwa14( ){};
+
+		iiwa14( const int ID, const char* name );
 };
 
 

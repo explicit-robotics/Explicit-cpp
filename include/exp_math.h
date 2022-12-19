@@ -1,5 +1,5 @@
 /*
- * EXPlicit - A robotics toolbox based on product of exponential formula.
+ * EXPlicit - A robotics toolbox based on the product of exponential formulae.
  *
  * Copyright (c) 2022 MIT
  * Authors
@@ -21,9 +21,7 @@
  * @return The exp( [w] ) = I + sin(theta) [w] + ( 1 - cos( theta ) ) [w]^2
  */
 Eigen::Matrix3d getExpSO3( const Eigen::Vector3d &w, const double theta );
-
 Eigen::Matrix4d getExpSE3( const Eigen::Vector3d &w, const Eigen::Vector3d &v, const double theta );
-
 Eigen::MatrixXd getAdjoint( const Eigen::Matrix4d &H );
 
 Eigen::MatrixXd getInvAdjoint( const Eigen::Matrix4d &H );

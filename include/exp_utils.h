@@ -1,5 +1,5 @@
 /*
- * EXPlicit - A robotics toolbox based on produce of exponential formula.
+ * EXPlicit - A robotics toolbox based on the product of exponential formulae.
  *
  * Copyright (c) 2022 MIT
  * Authors
