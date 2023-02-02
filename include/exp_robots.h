@@ -63,7 +63,6 @@ class RobotPrimitive
 			TODO
 		*/
 
-
 		/*
 			Etc. 	
 		*/
@@ -97,7 +96,7 @@ class RobotPrimitive
 
 		Eigen::MatrixXd getBodyJacobian( const Eigen::VectorXd &q_arr, const int bodyID, const int type );	
 
-		Eigen::MatrixXd getMassMatrix( const Eigen::VectorXd &q_arr );		
+		Eigen::MatrixXd getMassMatrix( const Eigen::VectorXd &q_arr );	
 
 		// void switchJoint(  );		
 
@@ -132,6 +131,9 @@ class iiwa14 : public RobotPrimitive
 		iiwa14( ){};
 
 		iiwa14( const int ID, const char* name );
+
+		Eigen::VectorXd addIIWALimits( iiwa14 *myIIWA, Eigen::VectorXd q, Eigen::VectorXd qDot, Eigen::MatrixXd Minv, const Eigen::VectorXd tau, double dt );	
+
 };
 
 

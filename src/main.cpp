@@ -21,7 +21,7 @@ int main( )
 	// std::cout << robot.JointTwists << std::endl;
 
 	Eigen::VectorXd q_arr( nq ); 
-	q_arr << 1, 1, 1, 1, 1, 1, 1, 1;
+	q_arr << 0.2, 0.1, 0.1, 0.1, 0.2, 0.3, 0.2, 0.5;
 
 	Eigen::MatrixXd tmp1 = robot.getForwardKinematics( q_arr );
 	Eigen::MatrixXd tmp2 = robot.getForwardKinematics( q_arr, 1, TYPE_COM );
@@ -58,32 +58,42 @@ int main( )
 	std::cout << myLBR.nq << std::endl;
 
 	Eigen::VectorXd q_arr_iiwa ( myLBR.nq );
-	q_arr_iiwa << 2, 2, 2, 2, 2, 2, 2;
+	q_arr << 0.2, 0.1, 0.1, 0.1, 0.2, 0.3, 0.2, 0.5;
 
 	Eigen::MatrixXd H = myLBR.getForwardKinematics( q_arr_iiwa );
 
-	std::cout << std::endl << "H: ";
+	std::cout << std::endl << "H: " << std::endl;
 	std::cout << H << std::endl;
 
 	Eigen::MatrixXd J_sp = myLBR.getSpatialJacobian( q_arr_iiwa );	
 
-	std::cout << std::endl << "J_s: ";
+	std::cout << std::endl << "J_s: " << std::endl;
 	std::cout << J_sp << std::endl;
 
 	Eigen::MatrixXd J_hy = myLBR.getHybridJacobian( q_arr_iiwa );	
 
-	std::cout << std::endl << "J_hy: ";
+	std::cout << std::endl << "J_hy: " << std::endl;
 	std::cout << J_hy << std::endl;	
 
 	Eigen::MatrixXd J_b = myLBR.getBodyJacobian( q_arr_iiwa, 7, TYPE_COM );	
 
-	std::cout << std::endl << "J_b: ";
+	std::cout << std::endl << "J_b: " << std::endl;
 	std::cout << J_b << std::endl;		
 
 	Eigen::MatrixXd M_iiwa = myLBR.getMassMatrix( q_arr_iiwa );	
 
-	std::cout << std::endl << "M_iiwa: ";
+	std::cout << std::endl << "M_iiwa: " << std::endl;
 	std::cout << M_iiwa << std::endl;	
+
+	Eigen::VectorXd tau ( myLBR.nq );
+	tau << 20, 20, 20, 20, 20, 20, 20;
+	Eigen::VectorXd qDot ( myLBR.nq );
+	qDot << 10, 10, 10, 10, 10, 10, 10;
+	Eigen::MatrixXd Minv  = M_iiwa;
+	
+	Eigen::VectorXd tauSat = myLBR.addIIWALimits( &myLBR, q_arr_iiwa, qDot, Minv, tau, 0.005 );
+	std::cout << std::endl << "tauSat: " << std::endl;
+	std::cout << tauSat << std::endl;
 
 	return 0;
 }
