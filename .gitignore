@@ -2,6 +2,7 @@
 build
 bin
 tmp
+test
 
 .vscode
 .DS_store

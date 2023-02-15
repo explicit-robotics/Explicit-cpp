@@ -14,14 +14,17 @@
 #include <Eigen/Dense>
 
 /**
- * @brief FILL IN
- * @param w FILL IN
- * @param theta FILL IN
- * @return FILL IN
+ * @brief Check whether parameter M is a symmetric matrix
+ * @param M a 3x3 matrix
+ * @return True or False
  */
-
 bool isSymmetric( const Eigen::MatrixXd &M );
 
+/**
+ * @brief Check whether parameter M is a skew-symmetric matrix
+ * @param M a 3x3 matrix
+ * @return True or False
+ */
 bool isSkewSymmetric( const Eigen::MatrixXd &M );
 
 double getMaxValue( Eigen::VectorXd &myVector );

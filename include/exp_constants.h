@@ -1,5 +1,5 @@
 /*
- * EXPlicit - A robotics toolbox based on the product of exponential formulae.
+ * EXPlicit - A robotics toolbox based on the product-of-exponentials formula.
  *
  * Copyright (c) 2022 MIT
  * Authors
@@ -17,5 +17,11 @@
 
 #define TYPE_JOINT 1
 #define TYPE_COM 2
+
+// Define PI
+#ifndef M_PI
+	#define M_PI 3.14159265358979
+#endif
+
 
 #endif

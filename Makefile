@@ -1,5 +1,7 @@
 # [REF] https://stackoverflow.com/questions/30573481/how-to-write-a-makefile-with-separate-source-and-header-directories
 
+# Currently, we only apply this makefile to the "main.cpp" inside src folder.
+
 SRC_DIR := src
 OBJ_DIR := build
 BIN_DIR := bin
@@ -10,7 +12,11 @@ EXE  := $(BIN_DIR)/main
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
-CPPFLAGS := -Iinclude -I/opt/homebrew/include/eigen3 -MMD -MP
+# [Moses C. Nah] For Macbook Air
+# CPPFLAGS := -Iinclude -I/opt/homebrew/include/eigen3 -MMD -MP
+
+# [Moses C. Nah]  For Macbook Pro
+CPPFLAGS := -Iinclude -I/usr/local/opt/eigen/include/eigen3 -MMD -MP
 CFLAGS   := -Wall -g -std=c++17
 CC = g++ 
 
