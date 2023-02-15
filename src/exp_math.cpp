@@ -30,6 +30,11 @@ Eigen::Vector3d skewSym2Vec( const Eigen::Matrix3d &M )
 
 Eigen::Matrix3d getExpSO3( const Eigen::Vector3d &w, const double theta )
 {
+	// Assertion that 
+	// (1) w should be a non-zero vector 
+	// (2) w should be a unit vector
+	assert( !w.isZero( 0 ) && w.norm( ) == 1. );
+
 	Eigen::Matrix3d w_hat = vec2SkewSym( w );
 
 	// The Rodriguez's Formula
@@ -84,7 +89,7 @@ Eigen::MatrixXd getExpProd( const Eigen::MatrixXd &H )
 {	
 	// Given a T : ( 4 x ( 4 x nq ) ) 2D array, doing the exponential product
 	// Check whether the given H Matrix's column is divided by 4.
-	assert( H.cols( ) % 4 == 0 );
+	assert( H.rows( ) == 4 && H.cols( ) % 4 == 0 );
 
 	// Get the number of H matrix for iteration
 	int n = H.cols( ) / 4;

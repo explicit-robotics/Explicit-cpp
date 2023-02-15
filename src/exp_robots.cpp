@@ -8,11 +8,6 @@
 #include "exp_robots.h"
 #include "exp_constants.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979
-#endif
-
-
 /*************************************************************/
 /********************* ROBOT PRIMITIVES **********************/
 /*************************************************************/
@@ -297,63 +292,62 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	// ======================================================== //
 	// =================== BASIC PROPERTIES  ================== //
 	// ======================================================== //
-	int nq = 7;
-	this->nq = nq;
+
+	// There are 7 joints for iiwa14
+	this->nq = 7;
 
 	// ======================================================== //
-	// ======================= LIMITS  ======================== //
+	// ================= JOINT LIMITS  ======================== //
 	// ======================================================== //
 	
 	// Joint limits, including some safe distance to physical limit
-	Eigen::VectorXd qMax = Eigen::VectorXd::Zero( this->nq );
-	qMax[ 0 ] = 163 * M_PI / 180;
-    qMax[ 1 ] = 113 * M_PI / 180;
-    qMax[ 2 ] = 163 * M_PI / 180;
-    qMax[ 3 ] = 115 * M_PI / 180;
-    qMax[ 4 ] = 160 * M_PI / 180;
-    qMax[ 5 ] = 110 * M_PI / 180;
-    qMax[ 6 ] = 165 * M_PI / 180;
+	Eigen::VectorXd q_max = Eigen::VectorXd::Zero( this->nq );
+	Eigen::VectorXd q_min = Eigen::VectorXd::Zero( this->nq );
 
-	Eigen::VectorXd qMin = Eigen::VectorXd::Zero( this->nq );
-    qMin[ 0 ] = -163 * M_PI / 180;
-    qMin[ 1 ] = -113 * M_PI / 180;
-    qMin[ 2 ] = -163 * M_PI / 180;
-    qMin[ 3 ] = -115 * M_PI / 180;
-    qMin[ 4 ] = -160 * M_PI / 180;
-    qMin[ 5 ] = -110 * M_PI / 180;
-    qMin[ 6 ] = -165 * M_PI / 180;
+	// q_max/q_min in degrees
+	// Currently, q_min is -q_max, but the values can change, thus manually defining the values.
+	q_max <<  163,  113,  163,  115,  160,  110,  165;
+	q_min << -163, -113, -163, -115, -160, -110, -165;
+
+	// Changing degrees to radian
+	q_max *= M_PI/180;
+	q_min *= M_PI/180;
 
 	// Velocity and acceleration limits
-	Eigen::VectorXd dqMax = 150 * Eigen::VectorXd::Ones( this->nq );
-	Eigen::VectorXd dqMin = -150 * Eigen::VectorXd::Ones( this->nq );
-	Eigen::VectorXd ddqMax = 300 * Eigen::VectorXd::Ones( this->nq );
-	Eigen::VectorXd ddqMin = -300 * Eigen::VectorXd::Ones( this->nq );
+	Eigen::VectorXd dq_max  =  150 * Eigen::VectorXd::Ones( this->nq );
+	Eigen::VectorXd dq_min  = -150 * Eigen::VectorXd::Ones( this->nq );
+	Eigen::VectorXd ddq_max =  300 * Eigen::VectorXd::Ones( this->nq );
+	Eigen::VectorXd ddq_min = -300 * Eigen::VectorXd::Ones( this->nq );
 
 	// Saving all defined limits
-	this->q_max = qMax;
-	this->q_min = qMin;
-	this->dq_max = dqMax;
-	this->dq_min = dqMin;		
-	this->ddq_max = ddqMax;
-	this->ddq_min = ddqMin;	
+	this->q_max   =   q_max;
+	this->q_min   =   q_min;
+	this->dq_max  =  dq_max;
+	this->dq_min  =  dq_min;		
+	this->ddq_max = ddq_max;
+	this->ddq_min = ddq_min;	
 
 	// ======================================================== //
 	// ================= GEOMETRIC PROPERTIES  ================ //
 	// ======================================================== //
 
 	// The joint types are all 1 (i.e., revolute joints)
-	Eigen::VectorXd JointTypes = REVOLUTE_JOINT * Eigen::VectorXd::Ones( this-> nq );
+	Eigen::VectorXd JointTypes = REVOLUTE_JOINT * Eigen::VectorXd::Ones( this->nq );
 
 	// Define the joint axes positions and directions 
+	// These are relative displacements, hence should add the values cumulatively 
+	// [2023.02.15] [Moses C. Nah] It might be good to have cumulative sum function 
+	//							   To simplify the code.
 	Eigen::MatrixXd AxisOrigins( 3, this->nq );
-	AxisOrigins.col( 0 ) = Eigen::Vector3d( 0.0,   0.0,    152.5e-3 );  
-	AxisOrigins.col( 1 ) = Eigen::Vector3d( 0.0, -13.0e-3, 207.5e-3 );
-	AxisOrigins.col( 2 ) = Eigen::Vector3d( 0.0, +13.0e-3, 232.5e-3 );
-	AxisOrigins.col( 3 ) = Eigen::Vector3d( 0.0, +11.0e-3, 187.5e-3 );
-	AxisOrigins.col( 4 ) = Eigen::Vector3d( 0.0, -11.0e-3, 212.5e-3 );
-	AxisOrigins.col( 5 ) = Eigen::Vector3d( 0.0, -62.0e-3, 187.5e-3 );
-	AxisOrigins.col( 6 ) = Eigen::Vector3d( 0.0, +62.0e-3,  79.6e-3 );
+	AxisOrigins.col( 0 ) = 						  Eigen::Vector3d( 0.0,      0.0, 152.5e-3 );  
+	AxisOrigins.col( 1 ) = AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0, -13.0e-3, 207.5e-3 );
+	AxisOrigins.col( 2 ) = AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0, +13.0e-3, 232.5e-3 );
+	AxisOrigins.col( 3 ) = AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0, +11.0e-3, 187.5e-3 );
+	AxisOrigins.col( 4 ) = AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0, -11.0e-3, 212.5e-3 );
+	AxisOrigins.col( 5 ) = AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0, -62.0e-3, 187.5e-3 );
+	AxisOrigins.col( 6 ) = AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0, +62.0e-3,  79.6e-3 );
 
+	// Axis Directions of the robot, Defining it for joints 1~7
 	Eigen::MatrixXd AxisDirections( 3, this->nq );
 	AxisDirections.col( 0 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
 	AxisDirections.col( 1 ) = Eigen::Vector3d( 0.0,  1.0,  0.0 );
@@ -363,54 +357,52 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	AxisDirections.col( 5 ) = Eigen::Vector3d( 0.0,  1.0,  0.0 );
 	AxisDirections.col( 6 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
 
-	// Define inertial parameters of the robot
+	// ======================================================== //
+	// ================== INERTIAL PROPERTIES  ================ //
+	// ======================================================== //
+	// Define the masses of the links
 	Eigen::VectorXd Masses( this->nq );	
-	Masses( 0 ) = 6.404;
-	Masses( 1 ) = 7.89;
-	Masses( 2 ) = 2.54;
-	Masses( 3 ) = 4.82;
-	Masses( 4 ) = 1.76;
-	Masses( 5 ) = 2.5;
-	Masses( 6 ) = 0.42;
-
+	Masses << 6.404, 7.89, 2.54, 4.82, 1.76, 2.50, 0.42;
+	
 	// Eigen::Vector3d com[ nq ];
 	Eigen::MatrixXd COM( 3, this->nq );
-	COM.col( 0 ) = Eigen::Vector3d( 0.0,	-14.0e-3,  102.0e-3);  
-	COM.col( 1 ) = Eigen::Vector3d( 0.0,  16.0e-3,   64.0e-3);  
-	COM.col( 2 ) = Eigen::Vector3d( 0.0,  19.0e-3,   98.0e-3);  
-	COM.col( 3 ) = Eigen::Vector3d( 0.0, -20.0e-3,   86.0e-3);
-	COM.col( 4 ) = Eigen::Vector3d( 0.0, -13.0e-3,   66.0e-3);  
-	COM.col( 5 ) = Eigen::Vector3d( 0.0,  60.0e-3,   16.0e-3);  
-	COM.col( 6 ) = Eigen::Vector3d( 0.0,   0.0e-3,   11.0e-3); 
+	COM.col( 0 ) = AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0,  -14.0e-3,  102.0e-3);  
+	COM.col( 1 ) = AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0,   16.0e-3,   64.0e-3);  
+	COM.col( 2 ) = AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0,   19.0e-3,   98.0e-3);  
+	COM.col( 3 ) = AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0,  -20.0e-3,   86.0e-3);
+	COM.col( 4 ) = AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0,  -13.0e-3,   66.0e-3);  
+	COM.col( 5 ) = AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0,   60.0e-3,   16.0e-3);  
+	COM.col( 6 ) = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0,    0.0e-3,   11.0e-3); 
 
+	// Define the Principal axes/moments of inertia of the link
 	Eigen::MatrixXd Inertias( 3, 3 * this->nq );	
-	Inertias.block< 3, 3 >( 0, 3 * 0 ) << 0.069, 0.0,   0.0,
-										  0.0 ,  0.071, 0.0,
-										  0.0,   0.0,   0.02;
+	Inertias.block< 3, 3 >( 0, 3 * 0 ) << 0.069, 0.000, 0.00,
+										  0.000, 0.071, 0.00,
+										  0.000, 0.000, 0.02;
 
-	Inertias.block< 3, 3 >( 0, 3 * 1 ) << 0.08, 0.0,  0.0,
-				            	 		  0.0,  0.08, 0.0,
-								 		  0.0,  0.0,  0.01;
+	Inertias.block< 3, 3 >( 0, 3 * 1 ) << 0.08, 0.00, 0.00,
+				            	 		  0.00, 0.08, 0.00,
+								 		  0.00, 0.00, 0.01;
 
-	Inertias.block< 3, 3 >( 0, 3 * 2 ) << 0.02, 0.0,  0.0,
-				            	 		  0.0,  0.02, 0.0,
-								 		  0.0,  0.0,  0.06;
+	Inertias.block< 3, 3 >( 0, 3 * 2 ) << 0.02, 0.00, 0.00,
+				            	 		  0.00, 0.02, 0.00,
+								 		  0.00, 0.00, 0.06;
 	
-	Inertias.block< 3, 3 >( 0, 3 * 3 ) << 0.04, 0.0,  0.0, 
-				            	 		  0.0,  0.03, 0.0,
-								 		  0.0,  0.0,  0.01;
+	Inertias.block< 3, 3 >( 0, 3 * 3 ) << 0.04, 0.00, 0.00, 
+				            	 		  0.00, 0.03, 0.00,
+								 		  0.00, 0.00, 0.01;
 	
-	Inertias.block< 3, 3 >( 0, 3 * 4 ) << 0.01, 0.0,  0.0, 
-				            	 		  0.0,  0.01, 0.0,
-								 		  0.0,  0.0,  0.01;
+	Inertias.block< 3, 3 >( 0, 3 * 4 ) << 0.01, 0.00, 0.00, 
+				            	 		  0.00, 0.01, 0.00,
+								 		  0.00, 0.00, 0.01;
 
-	Inertias.block< 3, 3 >( 0, 3 * 5 ) << 0.007, 0.0,   0.0, 
-				        		 		  0.0,   0.006, 0.0,
-								 		  0.0,   0.0,   0.005;
+	Inertias.block< 3, 3 >( 0, 3 * 5 ) << 0.007, 0.000, 0.000, 
+				        		 		  0.000, 0.006, 0.000,
+								 		  0.000, 0.000, 0.005;
 
-	Inertias.block< 3, 3 >( 0, 3 * 6 ) << 0.0003, 0.0,    0.0, 
-				            	 		  0.0,    0.0003, 0.0,
-								 		  0.0,    0.0,    0.0005;
+	Inertias.block< 3, 3 >( 0, 3 * 6 ) << 0.0003, 0.0000, 0.0000, 
+				            	 		  0.0000, 0.0003, 0.0000,
+								 		  0.0000, 0.0000, 0.0005;
 
 	// Concatenate matrices for transformations and Generalized inertia matrix
 	Eigen::MatrixXd H_init( 4, 4 * ( this->nq + 1 ) );
@@ -433,8 +425,9 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	}
 
 	// Setup the final H_init Matrix for Media Flange Touch
-	Eigen::Vector3d FlangePos = Eigen::Vector3d( 0.0, 0.0, 0.071 );                    
-	H_init.block< 4, 4 >( 0, 4 * this->nq ) = Eigen::Matrix4d::Identity( 4, 4 );
+	// Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );                    
+	Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0314 );                    
+	H_init.block< 4, 4 >( 0, 4 * this->nq 	  ) = Eigen::Matrix4d::Identity( 4, 4 );
 	H_init.block< 3, 1 >( 0, 4 * this->nq + 3 ) = FlangePos;
 
 	// Saving all of the calculated matrices
@@ -529,7 +522,7 @@ Eigen::VectorXd iiwa14::addIIWALimits( iiwa14 *myIIWA, Eigen::VectorXd q, Eigen:
         }
 
 		// Check for min. and max. joint velocity
-		double max_val = 1000000;
+		double max_val =  1000000;
 		double min_val = -1000000;
 
         qDotMaxFromQ[ i ] = ( myIIWA->q_max[ i ] - q[ i ] ) / dt2[ i ];
