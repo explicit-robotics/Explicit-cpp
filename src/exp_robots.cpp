@@ -16,63 +16,100 @@ RobotPrimitive::RobotPrimitive( const int ID, const char* Name )
 {
 	this->ID   = ID;
 	this->Name = Name;
+}
 
+void RobotPrimitive::init( )
+{
+
+
+	// Initialize the JS, JH, JB to avoid the re-construction of the matrix 
+	Eigen::MatrixXd JS( 6, this->nq );
+	Eigen::MatrixXd JH( 6, this->nq );
+	Eigen::MatrixXd JB( 6, this->nq );
+
+	this->JS = JS;
+	this->JH = JH;
+	this->JB = JB;
+
+	// Initialize the L Matrix used for the 
+	Eigen::MatrixXd L_Mat( 6 * this->nq, 6 * this->nq );
+	L_Mat = Eigen::MatrixXd::Identity( 6 * this->nq, 6 * this->nq );	
+	this->L_Mat = L_Mat;
+
+	Eigen::MatrixXd JointTwists( 6, this->nq );
+	JointTwists = Eigen::MatrixXd::Zero( 6, this->nq );
+	this->JointTwists = JointTwists;
+
+	Eigen::MatrixXd A_Mat1( 		   6,  this->nq );
+	Eigen::MatrixXd A_Mat2( 6 * this->nq,  this->nq );
+
+	A_Mat1 = Eigen::MatrixXd::Zero( 		   6,  this->nq );
+	A_Mat2 = Eigen::MatrixXd::Zero( 6 * this->nq,  this->nq );
+
+	this->A_Mat1 = A_Mat1;
+	this->A_Mat2 = A_Mat2;
+
+	this->setJointTwists( );
+	this->setGeneralizedMassMatrix( );
+
+	
 }
 
 void RobotPrimitive::setJointTwists( )
 {
-	// [2022.12.07] [Moses C. Nah] [Backup]
-	// The length of Joint Types   : ( 1 x nq )
-	// The shape of Axis Origins   : ( 3 x nq )
-	// The shape of Axis Directions: ( 3 x nq )
-	// assert( JointTypes.size( ) == AxisOrigins.cols( ) && JointTypes.size( ) == AxisDirections.cols( ) );
-
 	// The Joint Twist Matrix of the Robot: ( 6 x nq )
-	// Initializing the Joint Twist Matrix that will be later saved as a member variable
-	Eigen::MatrixXd JointTwists( 6, this->nq );
-	JointTwists = Eigen::MatrixXd::Zero( 6, this->nq );
+	// Initializing the Joint Twist Matrix, and A matrices
+	Eigen::VectorXd Ai( 6, 1 );	
 
+	// Iteration over the degrees of freedom.
 	for( int i = 0; i < this->nq; i++ )
 	{
-		// If Rotational Joint
+		// Before calculation, normalize the axis direction in case if it wasn't
+		this->AxisDirections.col( i ).normalize( );
+
+		// Create the joint twist of the i-th joint with respect to the {i} frame
 		if( this->JointTypes( i ) == REVOLUTE_JOINT )
 		{	
-			JointTwists.block< 3, 1 >( 0, i ) = -vec2SkewSym( this->AxisDirections.col( i ) ) * this->AxisOrigins.col( i );
-			JointTwists.block< 3, 1 >( 3, i ) = this->AxisDirections.col( i );
+			
+			this->JointTwists.block< 3, 1 >( 0, i ) = -vec2SkewSym( this->AxisDirections.col( i ) ) * this->AxisOrigins.col( i );
+			this->JointTwists.block< 3, 1 >( 3, i ) = this->AxisDirections.col( i );
 		}
 		else if( this->JointTypes( i ) == PRISMATIC_JOINT )
 		{
-			JointTwists.block< 3, 1 >( i, 0 ) = this->AxisDirections.col( i );
+			this->JointTwists.block< 3, 1 >( i, 0 ) = this->AxisDirections.col( i );
 		}
 		else 
 		{	// Something wrong, raise assertion
 			assert( false );
 		}
-		
-	}
 
-	this->JointTwists = JointTwists;
-
-	// Set the A Matrices
-	Eigen::MatrixXd A_mat1( 		   6,  this->nq );
-	Eigen::MatrixXd A_mat2( 6 * this->nq,  this->nq );
-
-	Eigen::VectorXd Ai( 6, 1 );
-	for( int i = 0; i < this->nq; i++ )
-	{
 		Ai = getInvAdjoint( this->H_COM_init.block< 4,4 >( 0,4*i ) ) * this->JointTwists.block< 6, 1 >( 0, i );
-		A_mat1.block<6,1>(0, i)	  = Ai; 		// Stacking Ai horizontally
-		A_mat2.block<6,1>(6*i, i) = Ai;			// Stacking Ai horizontally with an offset
+	
+		this->A_Mat1.block<6,1>(0, i)	= Ai; 		// Stacking Ai horizontally
+		this->A_Mat2.block<6,1>(6*i, i) = Ai;			// Stacking Ai horizontally with an offset
+
 	}
-	this->A_mat1 = A_mat1;
-	this->A_mat2 = A_mat2;
+
 }
 
 void RobotPrimitive::setGeneralizedMassMatrix( )
 {
-	
-	this->M_mat1 = M_mat1;
-	this->M_mat2 = M_mat2;
+
+	Eigen::MatrixXd M_Mat1( 6, 6 * this->nq );
+	Eigen::MatrixXd M_Mat2( 6 * this->nq, 6 * this->nq );
+
+	for( int i = 0; i < this->nq; i++)
+	{
+		// Generalized inertia matrix
+		M_Mat1.block< 3, 3 >( 0, 6 * i 	) 	 = this->Masses ( i ) * Eigen::Matrix3d::Identity( 3, 3 );
+		M_Mat1.block< 3, 3 >( 3, 6 * i + 3 ) = this->Inertias.block< 3, 3 >( 0, 3 * i );
+
+		// Generalized inertia matrix, in diagonal form
+		M_Mat2.block< 6, 6 >( 6*i, 6*i ) = M_Mat1.block< 6, 6 >( 0, 6*i );
+	}
+
+	this->M_Mat1 = M_Mat1;
+	this->M_Mat2 = M_Mat2;
 }
 
 Eigen::Matrix4d RobotPrimitive::getForwardKinematics( const Eigen::VectorXd &q_arr )
@@ -80,16 +117,14 @@ Eigen::Matrix4d RobotPrimitive::getForwardKinematics( const Eigen::VectorXd &q_a
 	// Assertion that q_arr length must be same with nq
 	assert( this->nq == q_arr.size( ) );
 
-	// Produce the ( 4 x ( 4 x nq ) ) 2D Matrix for the forward kinematics
-	Eigen::MatrixXd H_arr( 4, 4 * this->nq );
-
+	// Use the H_arrs for the calculation
 	for( int i = 0; i < this->nq; i ++ )
 	{
-		H_arr.block< 4, 4 >( 0, 4 * i ) = getExpSE3( this->JointTwists.block< 3, 1 >( 3, i ), this->JointTwists.block< 3, 1 >( 0, i ), q_arr( i ) );
+		this->H_arrs.block< 4, 4 >( 0, 4 * i ) = getExpSE3( this->JointTwists.block< 3, 1 >( 3, i ), this->JointTwists.block< 3, 1 >( 0, i ), q_arr( i ) );
 	}
 
 	// The Return the Forward Kinematics of the end-effector of robot
-	return getExpProd( H_arr ) * this->H_init.block< 4, 4 >( 0, 4*this->nq );
+	return getExpProd( this->H_arrs ) * this->H_init.block< 4, 4 >( 0, 4*this->nq );
 
 } 
 
@@ -104,22 +139,21 @@ Eigen::Matrix4d RobotPrimitive::getForwardKinematics( const Eigen::VectorXd &q_a
 	// Assertion that type is either JOINT or COM (Center of Mass)
 	assert( type == TYPE_JOINT || type == TYPE_COM );
 
-	// Produce the ( 4 x ( 4 x bodyID ) ) 2D Matrix for the forward kinematics
-	Eigen::MatrixXd H_arr( 4, 4 * bodyID );
-
+	// Assign the H_arr matrix
 	for( int i = 0; i < bodyID; i ++ )
 	{
-		H_arr.block< 4, 4 >( 0, 4 * i ) = getExpSE3( this->JointTwists.block< 3, 1 >( 3, i ), this->JointTwists.block< 3, 1 >( 0, i ), q_arr( i ) );
+		this->H_arrs.block< 4, 4 >( 0, 4 * i ) = getExpSE3( this->JointTwists.block< 3, 1 >( 3, i ), this->JointTwists.block< 3, 1 >( 0, i ), q_arr( i ) );
 	}
 
 	// If either JOINT or COM
 	if( type == TYPE_JOINT )
 	{
-		return getExpProd( H_arr ) * this->H_init.block< 4, 4 >( 0, 4 * ( bodyID - 1 ) );
+		return getExpProd( this->H_arrs.block( 0, 0, 4, 4 * bodyID ) ) * this->H_init.block< 4, 4 >( 0, 4 * ( bodyID - 1 ) );
 	}
 	else if ( type == TYPE_COM )
 	{	
-		return getExpProd( H_arr ) * this->H_COM_init.block< 4, 4 >( 0, 4 * ( bodyID - 1 ) );
+		
+		return getExpProd( this->H_arrs.block( 0, 0, 4, 4 * bodyID ) ) * this->H_COM_init.block< 4, 4 >( 0, 4 * ( bodyID - 1 ) );
 	}
 	else 
 	{
@@ -133,12 +167,9 @@ Eigen::MatrixXd RobotPrimitive::getSpatialJacobian( const Eigen::VectorXd &q_arr
 	// Assertion that q_arr length must be same with nq
 	assert( this->nq == q_arr.size( ) );
 
-	// Initialize the Spatial Jacobian Matrix, which is a ( 6 x nq ) matrix
-	Eigen::MatrixXd J_Spatial( 6, this->nq );
-
 	// The First column of the Spatial Jacobian is the first joint twist array
 	// Hence, saving the first joint twist values to the Spatial Jacobian
-	J_Spatial.col( 0 ) = this->JointTwists.col( 0 );
+	this->JS.col( 0 ) = this->JointTwists.col( 0 );
 
 	Eigen::MatrixXd H_tmp( 4, 4 );
 	H_tmp = Eigen::MatrixXd::Identity( 4, 4 );
@@ -146,10 +177,10 @@ Eigen::MatrixXd RobotPrimitive::getSpatialJacobian( const Eigen::VectorXd &q_arr
 	for( int i = 0; i < ( this->nq - 1 ); i ++ )
 	{
 		H_tmp *= getExpSE3( this->JointTwists.block< 3, 1 >( 3, i ), this->JointTwists.block< 3, 1 >( 0, i ), q_arr( i ) );
-		J_Spatial.col( i + 1 ) = getAdjoint( H_tmp ) * this->JointTwists.col( i + 1 );
+		this->JS.col( i + 1 ) = getAdjoint( H_tmp ) * this->JointTwists.col( i + 1 );
 	}
 
-	return J_Spatial;
+	return this->JS;
 }
 
 Eigen::MatrixXd RobotPrimitive::getSpatialJacobian( const Eigen::VectorXd &q_arr, const int bodyID )		
@@ -160,13 +191,9 @@ Eigen::MatrixXd RobotPrimitive::getSpatialJacobian( const Eigen::VectorXd &q_arr
 	// Assertion that bodyID must be smaller or equal to nq
 	assert( bodyID <= this->nq && bodyID >= 1  );
 
-	// Initialize the Spatial Jacobian Matrix, which is a ( 6 x nq ) matrix
-	Eigen::MatrixXd J_Spatial( 6, this->nq );
-	J_Spatial = Eigen::MatrixXd::Zero( 6, this->nq );
-
 	// The First column of the Spatial Jacobian is the first joint twist array
 	// Hence, saving the first joint twist values to the Spatial Jacobian
-	J_Spatial.col( 0 ) = this->JointTwists.col( 0 );
+	this->JS.col( 0 ) = this->JointTwists.col( 0 );
 
 	Eigen::MatrixXd H_tmp( 4, 4 );
 	H_tmp = Eigen::MatrixXd::Identity( 4, 4 );
@@ -174,10 +201,10 @@ Eigen::MatrixXd RobotPrimitive::getSpatialJacobian( const Eigen::VectorXd &q_arr
 	for( int i = 0; i < bodyID-1; i ++ )
 	{
 		H_tmp *= getExpSE3( this->JointTwists.block< 3, 1 >( 3, i ), this->JointTwists.block< 3, 1 >( 0, i ), q_arr( i ) );
-		J_Spatial.col( i + 1 ) = getAdjoint( H_tmp ) * this->JointTwists.col( i + 1 );
+		this->JS.col( i + 1 ) = getAdjoint( H_tmp ) * this->JointTwists.col( i + 1 );
 	}
 
-	return J_Spatial;
+	return this->JS;
 }
 
 
@@ -196,12 +223,11 @@ Eigen::MatrixXd RobotPrimitive::getHybridJacobian( const Eigen::VectorXd &q_arr 
 	Eigen::MatrixXd A;
 	A = Eigen::MatrixXd::Identity( 6, 6 );
 
-	A.block< 3, 3 >( 0, 3 ) = - vec2SkewSym( H_EE.block< 3, 1 >( 0, 3 ) );
+	A.block< 3, 3 >( 0, 3 ) = -vec2SkewSym( H_EE.block< 3, 1 >( 0, 3 ) );
 	
 	return A * this->getSpatialJacobian( q_arr );
 
 }
-
 
 Eigen::MatrixXd RobotPrimitive::getBodyJacobian( const Eigen::VectorXd &q_arr, const int bodyID, const int type )
 {
@@ -215,7 +241,7 @@ Eigen::MatrixXd RobotPrimitive::getMassMatrix( const Eigen::VectorXd &q_arr )
 
 	for( int i = 0; i < this->nq; i++ )
 	{
-		M += this->getBodyJacobian( q_arr, i + 1, TYPE_COM ).transpose( ) * this->M_Mat.block< 6, 6 >( 0, 6 * i ) * this->getBodyJacobian( q_arr, i+ 1 , TYPE_COM );
+		M += this->getBodyJacobian( q_arr, i + 1, TYPE_COM ).transpose( ) * this->M_Mat1.block< 6, 6 >( 0, 6 * i ) * this->getBodyJacobian( q_arr, i+ 1 , TYPE_COM );
 	} 
 
 	return M;
@@ -223,115 +249,24 @@ Eigen::MatrixXd RobotPrimitive::getMassMatrix( const Eigen::VectorXd &q_arr )
 
 Eigen::MatrixXd RobotPrimitive::getMassMatrix2( const Eigen::VectorXd &q_arr )
 {
-	Eigen::MatrixXd M( this->nq, this->nq );
-	Eigen::MatrixXd L_Mat( 6 * this->nq, 6 * this->nq );
 
 	Eigen::MatrixXd Ai( 6, 1 );
 	Eigen::MatrixXd Hi( 4, 4 );
 	Eigen::MatrixXd Hj( 4, 4 );
 
-	L_Mat = Eigen::MatrixXd::Identity( 6 * this->nq, 6 * this->nq );
-	
+	// Initialize
+	this->L_Mat = Eigen::MatrixXd::Identity( 6 * this->nq, 6 * this->nq );	
 
 	for( int i = 1; i < this->nq; i++ )
 	{
-		Ai = this->A_mat.block< 6, 1 >( 6*i, i );               
+		Ai = this->A_Mat1.block< 6, 1 >( 0, i );               
 		Hi = this->H_COM_init.block< 4, 4 >( 0, 4 * i );
 		Hj = this->H_COM_init.block< 4, 4 >( 0, 4 * (i-1) );
 
-		L_Mat.block( 6*i, 0, 6, 6*i ) = getAdjoint( getExpSE3( -Ai.block<3,1>(3,0), -Ai.block<3,1>(0,0), q_arr( i ) ) * Hi.inverse( ) * Hj  ) *  L_Mat.block( 6*( i - 1 ), 0, 6, 6*i  );
+		this->L_Mat.block( 6*i, 0, 6, 6*i ) = getAdjoint( getExpSE3( -Ai.block<3,1>(3,0), -Ai.block<3,1>(0,0), q_arr( i ) ) * Hi.inverse( ) * Hj  ) *  L_Mat.block( 6*( i - 1 ), 0, 6, 6*i  );
 	}
 
-	M = this->A_mat.transpose( ) * L_Mat.transpose( ) * this->M_Mat2 *  L_Mat * this->A_mat;
-
-	return M;
-}
-
-
-/*************************************************************/
-/************************* SNAKE BOT *************************/
-/*************************************************************/
-SnakeBot::SnakeBot( const int ID, const char* name, const int nq, const double m, const double l ): RobotPrimitive( ID, name )
-{
-	// Assertion of nq, m and l, which should be positive values
-	assert( nq >= 1 && m > 0 && l > 0 );
-	this->nq = nq;
-
-	// ======================================================== //
-	// ================== JOINT TWIST SET-UP ================== //
-	// ======================================================== //
-	// Construct the H_init and H_COM_init matrices
-	// Sizes are ( 4 x { 4 * (nq + 1) } ) and ( 4 x { 4 * nq } ), respectively.
-	// The final one includes the end-effector's SE(3) Matrix
-	// Due to the end-effector, matrix is 4 * nq "+1"
-	Eigen::MatrixXd     H_init( 4, 4 * ( this->nq + 1 ) );
-	Eigen::MatrixXd H_COM_init( 4, 4 * ( this->nq     ) );
-
-	// Define the Axis Origin, Axis Direction and Joint Types
-	// The Size of each Matrix:
-	// Axis Origin:    3 x nq
-	// Axis Direction: 3 x nq
-	// Joint Types:    1 x nq
-	Eigen::MatrixXd AxisOrigins( 3, this->nq );
-	Eigen::MatrixXd AxisDirections( 3, this->nq );
-	Eigen::VectorXd JointTypes( this->nq );
-
-	// The Joint Types are all 1 (i.e., revolute joint)
-	AxisOrigins    = Eigen::MatrixXd::Zero( 3, this->nq );
-	AxisDirections = Eigen::MatrixXd::Zero( 3, this->nq );
-	JointTypes 	   = REVOLUTE_JOINT * Eigen::VectorXd::Ones( this-> nq );
-	
-	// The inertial parameters of the robot.
-	Eigen::MatrixXd M_Mat(  6, 6 * this->nq );
-	Eigen::MatrixXd Inertias( 3, 3 * this->nq );
-	Eigen::VectorXd Masses( this->nq );	
-
-	Eigen::MatrixXd M_Mat2( 6 * this->nq, 6 * this->nq );
-
-	for( int i = 0; i < this->nq; i++ )
-	{
-		// The Rotation matrix is an identity matrix
-		H_init.block< 4, 4 >( 0, 4*i ) = Eigen::Matrix4d::Identity( 4, 4 );
-
-		// The x-position of H_init, others are zeros
-		H_init( 0, 4*i+3 ) = l * i;
-
-		H_COM_init.block< 4, 4 >( 0, 4*i ) = Eigen::Matrix4d::Identity( 4, 4 );
-		H_COM_init( 0, 4*i+3 ) = l * ( i + 0.5 );
-
-		// The x-position of the axis, others are zeros
-		AxisOrigins( 0, i ) = l * i;
-
-		// +1 along Z axis
-		AxisDirections( 2, i ) = 1;
-		
-		// The mass of the (i+1)-th segment 
-		Masses( i ) = m;
-
-		// The inertia along the +z axis
-		Inertias( 2, 3*i + 2 ) = 1.0/12. * m * l * l;			
-		M_Mat.block< 3, 3 >( 0, 6*i 	) = m * Eigen::Matrix3d::Identity( 3, 3 );
-		M_Mat.block< 3, 3 >( 3, 6*i + 3 ) = Inertias.block< 3, 3 >( 0, 3*i );
-
-	}
-
-	// Setup the final H_init Matrix
-	H_init.block< 4, 4 >( 0, 4 * this->nq ) = Eigen::Matrix4d::Identity( 4, 4 );
-	H_init( 0, 4*this->nq + 3 ) = l * this->nq;
-
-	// Saving all of the calculated matrices
-	this->H_init 		 = H_init;
-	this->H_COM_init 	 = H_COM_init;
-	this->JointTypes  	 = JointTypes;
-	this->AxisOrigins 	 = AxisOrigins;
-	this->AxisDirections = AxisDirections;
-	this->Masses		 = Masses;
-	this->Inertias		 = Inertias;
-	this->M_Mat		 	 = M_Mat;
-
-	// Once the values are assigned, set Joint Twists
-	RobotPrimitive::setJointTwists(  );
-
+	return this->A_Mat2.transpose( ) * this->L_Mat.transpose( ) * this->M_Mat2 *  this->L_Mat * this->A_Mat2;
 }
 
 
@@ -460,8 +395,20 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	Eigen::MatrixXd H_init( 4, 4 * ( this->nq + 1 ) );
 	Eigen::MatrixXd H_COM_init( 4, 4 * ( this->nq     ) );
 	Eigen::MatrixXd H_arrs( 4, 4 * ( this->nq     ) );
-	Eigen::MatrixXd M_Mat1( 6, 6 * this->nq );
-	Eigen::MatrixXd M_Mat2( 6 * this->nq, 6 * this->nq );
+
+	for( int i = 0; i < this->nq; i++)
+	{
+		// The Rotation matrix is an identity matrix
+		H_init.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
+
+		// The translational part of H_init
+		H_init.block< 3, 1 >( 0, 4 * i + 3 ) = AxisOrigins.col( i );
+
+		H_COM_init.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
+		H_COM_init.block< 3, 1 >( 0, 4 * i + 3 ) = COM.col( i );
+
+		H_arrs.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
+	}
 
 	// Setup the final H_init Matrix for Media Flange Touch
 	// Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );                    
@@ -471,6 +418,7 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 
 	// Saving all of the calculated matrices
 	this->H_init 		 = H_init;
+	this->H_arrs 	 	 = H_arrs;
 	this->H_COM_init 	 = H_COM_init;
 	this->JointTypes  	 = JointTypes;
 	this->AxisOrigins 	 = AxisOrigins;
