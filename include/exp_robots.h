@@ -51,12 +51,20 @@ class RobotPrimitive
 		Eigen::MatrixXd H_ij;
 		Eigen::MatrixXd H_base;
 
+		Eigen::MatrixXd H_arrs; 	// This is a 4 x (4xnq) array which saves the H matrices for calculation
+
 		/* 
 			Inertial Properties
 		*/
+	
 		Eigen::VectorXd Masses;
 		Eigen::MatrixXd Inertias;
-		Eigen::MatrixXd M_Mat;	
+		Eigen::MatrixXd M_Mat1;	
+		Eigen::MatrixXd M_Mat2;		// The Diagonalized version of M_Mat1, Eq. 8.61 of Modern Robotics. 
+
+		// The A Matrix
+		Eigen::MatrixXd A_mat1;		// (6 x nq) array, collection of joint twists expressed in {i} frame	
+		Eigen::MatrixXd A_mat2;		// The Diagonalized version of A_Mat1, Eq. 8.60 of Modern Robotics. 
 
 		/* 
 			Animation Properties
@@ -89,22 +97,15 @@ class RobotPrimitive
 		// Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr, const int bodyID, const Eigen::Vector3d position );
 
 		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr );		
-
 		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr, const int bodyID );		
 
 		Eigen::MatrixXd getHybridJacobian( const Eigen::VectorXd &q_arr );
 
 		Eigen::MatrixXd getBodyJacobian( const Eigen::VectorXd &q_arr, const int bodyID, const int type );	
 
-		Eigen::MatrixXd getMassMatrix( const Eigen::VectorXd &q_arr );	
+		Eigen::MatrixXd getMassMatrix(  const Eigen::VectorXd &q_arr );	
+		Eigen::MatrixXd getMassMatrix2( const Eigen::VectorXd &q_arr );	
 
-		// void switchJoint(  );		
-
-		// void init( );			
-		
-		// void getCoriolisMatrix(  );		
-
-		// void addKinematics(  );		
 
 		
 

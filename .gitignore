@@ -3,6 +3,6 @@ build
 bin
 tmp
 test
-
+Eigen
 .vscode
 .DS_store
