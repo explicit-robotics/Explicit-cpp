@@ -33,6 +33,7 @@ class RobotPrimitive
 		Eigen::MatrixXd AxisOrigins;
 		Eigen::MatrixXd AxisDirections;
 		Eigen::MatrixXd JointTwists;
+		Eigen::MatrixXd COM;
 
 		Eigen::VectorXd q;
 		Eigen::VectorXd q_init;
@@ -51,12 +52,26 @@ class RobotPrimitive
 		Eigen::MatrixXd H_ij;
 		Eigen::MatrixXd H_base;
 
+		Eigen::MatrixXd H_arrs; 	// This is a 4 x (4xnq) array which temporarily saves the H matrices for calculation
+
 		/* 
 			Inertial Properties
 		*/
+
 		Eigen::VectorXd Masses;
 		Eigen::MatrixXd Inertias;
-		Eigen::MatrixXd M_Mat;	
+		Eigen::MatrixXd M_Mat1;	
+		Eigen::MatrixXd M_Mat2;		// The Diagonalized version of M_Mat1, Eq. 8.61 of Modern Robotics. 
+		Eigen::MatrixXd L_Mat;		// The Matrix used for calculating the MAss matrix
+
+		// The Jacobian Matrices
+		Eigen::MatrixXd JS;
+		Eigen::MatrixXd JB;
+		Eigen::MatrixXd JH;
+
+		// The A Matrix
+		Eigen::MatrixXd A_Mat1;		// (6 x nq) array, collection of joint twists expressed in {i} frame	
+		Eigen::MatrixXd A_Mat2;		// The Diagonalized version of A_Mat1, Eq. 8.60 of Modern Robotics. 
 
 		/* 
 			Animation Properties
@@ -80,46 +95,22 @@ class RobotPrimitive
 		*/
 		RobotPrimitive( const int ID, const char* Name );
 
+		void init( );
 		void setJointTwists(  );
+		void setGeneralizedMassMatrix( );
 
 		Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr );		
-
 		Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr, const int bodyID, const int type );
 
-		// Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr, const int bodyID, const Eigen::Vector3d position );
-
 		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr );		
-
 		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr, const int bodyID );		
 
 		Eigen::MatrixXd getHybridJacobian( const Eigen::VectorXd &q_arr );
 
 		Eigen::MatrixXd getBodyJacobian( const Eigen::VectorXd &q_arr, const int bodyID, const int type );	
 
-		Eigen::MatrixXd getMassMatrix( const Eigen::VectorXd &q_arr );	
-
-		// void switchJoint(  );		
-
-		// void init( );			
-		
-		// void getCoriolisMatrix(  );		
-
-		// void addKinematics(  );		
-
-		
-
-};
-
-class SnakeBot : public RobotPrimitive
-{
-	private:
-
-	public:
-		SnakeBot( ) {};
-
-		SnakeBot( const int ID, const char* name, const int nq, const double m, const double l );
-
-		// SnakeBot( const int ID, const char* name, const int nq, const Eigen::VectorXd &m_arr, const Eigen::VectorXd &m_arr );
+		Eigen::MatrixXd getMassMatrix(  const Eigen::VectorXd &q_arr );	
+		Eigen::MatrixXd getMassMatrix2( const Eigen::VectorXd &q_arr );	
 
 };
 
@@ -129,14 +120,7 @@ class iiwa14 : public RobotPrimitive
 
 	public:
 		iiwa14( ){};
-
-		iiwa14( const int ID, const char* name );
-
-		Eigen::VectorXd addIIWALimits( iiwa14 *myIIWA, Eigen::VectorXd q, Eigen::VectorXd qDot, Eigen::MatrixXd Minv, const Eigen::VectorXd tau, double dt );	
-
+		iiwa14( const int ID, const char* name );		
 };
-
-
-
 
 #endif
