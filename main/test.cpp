@@ -41,5 +41,15 @@ int main( )
         << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
         << " us" << std::endl;		
 
+	std::cout << H1 << std::endl;
+	std::cout << "========================" << std::endl;
+	std::cout << H2 << std::endl;
+	std::cout << "========================" << std::endl;
+	std::cout << H3 << std::endl;	
+	std::cout << "========================" << std::endl;
+	std::cout << H4 << std::endl;		
+
+	
+
 	return 0;
 }

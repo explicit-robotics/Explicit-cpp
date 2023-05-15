@@ -20,39 +20,28 @@ RobotPrimitive::RobotPrimitive( const int ID, const char* Name )
 
 void RobotPrimitive::init( )
 {
+	
+	// Initialize the Jacobian Matrices for the Robot
+	this->JS = Eigen::MatrixXd::Zero( 6,  this->nq );
+	this->JH = Eigen::MatrixXd::Zero( 6,  this->nq );
+	this->JB = Eigen::MatrixXd::Zero( 6,  this->nq );
 
+	// Initialize the Joint Twists and A Matrices
+	this->JointTwists = Eigen::MatrixXd::Zero( 	   		  6,  this->nq );
+	this->A_Mat1 	  = Eigen::MatrixXd::Zero( 		      6,  this->nq );
+	this->A_Mat2 	  = Eigen::MatrixXd::Zero( 6 * this->nq,  this->nq );
 
-	// Initialize the JS, JH, JB to avoid the re-construction of the matrix 
-	Eigen::MatrixXd JS( 6, this->nq );
-	Eigen::MatrixXd JH( 6, this->nq );
-	Eigen::MatrixXd JB( 6, this->nq );
+	// Initialize the Mass Matrices
+	this->M_Mat1 	  = Eigen::MatrixXd::Zero( 6 * this->nq,  6 * this->nq );
+	this->M_Mat2 	  = Eigen::MatrixXd::Zero( 6 * this->nq,  6 * this->nq );
 
-	this->JS = JS;
-	this->JH = JH;
-	this->JB = JB;
+	// Initialize the L Matrix used for the Mass Matrix Computation
+	this->L_Mat = Eigen::MatrixXd::Identity( 6 * this->nq, 6 * this->nq );	
 
-	// Initialize the L Matrix used for the 
-	Eigen::MatrixXd L_Mat( 6 * this->nq, 6 * this->nq );
-	L_Mat = Eigen::MatrixXd::Identity( 6 * this->nq, 6 * this->nq );	
-	this->L_Mat = L_Mat;
-
-	Eigen::MatrixXd JointTwists( 6, this->nq );
-	JointTwists = Eigen::MatrixXd::Zero( 6, this->nq );
-	this->JointTwists = JointTwists;
-
-	Eigen::MatrixXd A_Mat1( 		   6,  this->nq );
-	Eigen::MatrixXd A_Mat2( 6 * this->nq,  this->nq );
-
-	A_Mat1 = Eigen::MatrixXd::Zero( 		   6,  this->nq );
-	A_Mat2 = Eigen::MatrixXd::Zero( 6 * this->nq,  this->nq );
-
-	this->A_Mat1 = A_Mat1;
-	this->A_Mat2 = A_Mat2;
-
+	// Once Initialization Complete, set the joint twists and generalized mass matrix
 	this->setJointTwists( );
 	this->setGeneralizedMassMatrix( );
 
-	
 }
 
 void RobotPrimitive::setJointTwists( )
@@ -86,7 +75,7 @@ void RobotPrimitive::setJointTwists( )
 		Ai = getInvAdjoint( this->H_COM_init.block< 4,4 >( 0,4*i ) ) * this->JointTwists.block< 6, 1 >( 0, i );
 	
 		this->A_Mat1.block<6,1>(0, i)	= Ai; 		// Stacking Ai horizontally
-		this->A_Mat2.block<6,1>(6*i, i) = Ai;			// Stacking Ai horizontally with an offset
+		this->A_Mat2.block<6,1>(6*i, i) = Ai;		// Stacking Ai horizontally with an offset
 
 	}
 
@@ -94,22 +83,15 @@ void RobotPrimitive::setJointTwists( )
 
 void RobotPrimitive::setGeneralizedMassMatrix( )
 {
-
-	Eigen::MatrixXd M_Mat1( 6, 6 * this->nq );
-	Eigen::MatrixXd M_Mat2( 6 * this->nq, 6 * this->nq );
-
 	for( int i = 0; i < this->nq; i++)
 	{
 		// Generalized inertia matrix
-		M_Mat1.block< 3, 3 >( 0, 6 * i 	) 	 = this->Masses ( i ) * Eigen::Matrix3d::Identity( 3, 3 );
-		M_Mat1.block< 3, 3 >( 3, 6 * i + 3 ) = this->Inertias.block< 3, 3 >( 0, 3 * i );
+		this->M_Mat1.block< 3, 3 >( 0, 6 * i 	 ) = this->Masses( i ) * Eigen::Matrix3d::Identity( 3, 3 );
+		this->M_Mat1.block< 3, 3 >( 3, 6 * i + 3 ) = this->Inertias.block< 3, 3 >( 0, 3 * i );
 
 		// Generalized inertia matrix, in diagonal form
-		M_Mat2.block< 6, 6 >( 6*i, 6*i ) = M_Mat1.block< 6, 6 >( 0, 6*i );
+		this->M_Mat2.block< 6, 6 >( 6*i, 6*i ) = this->M_Mat1.block< 6, 6 >( 0, 6*i );
 	}
-
-	this->M_Mat1 = M_Mat1;
-	this->M_Mat2 = M_Mat2;
 }
 
 Eigen::Matrix4d RobotPrimitive::getForwardKinematics( const Eigen::VectorXd &q_arr )
@@ -152,7 +134,6 @@ Eigen::Matrix4d RobotPrimitive::getForwardKinematics( const Eigen::VectorXd &q_a
 	}
 	else if ( type == TYPE_COM )
 	{	
-		
 		return getExpProd( this->H_arrs.block( 0, 0, 4, 4 * bodyID ) ) * this->H_COM_init.block< 4, 4 >( 0, 4 * ( bodyID - 1 ) );
 	}
 	else 
@@ -169,10 +150,10 @@ Eigen::MatrixXd RobotPrimitive::getSpatialJacobian( const Eigen::VectorXd &q_arr
 
 	// The First column of the Spatial Jacobian is the first joint twist array
 	// Hence, saving the first joint twist values to the Spatial Jacobian
+	this->JS = Eigen::MatrixXd::Zero( 6,  this->nq );
 	this->JS.col( 0 ) = this->JointTwists.col( 0 );
 
-	Eigen::MatrixXd H_tmp( 4, 4 );
-	H_tmp = Eigen::MatrixXd::Identity( 4, 4 );
+	Eigen::MatrixXd H_tmp = Eigen::MatrixXd::Identity( 4, 4 );
 
 	for( int i = 0; i < ( this->nq - 1 ); i ++ )
 	{
@@ -192,11 +173,11 @@ Eigen::MatrixXd RobotPrimitive::getSpatialJacobian( const Eigen::VectorXd &q_arr
 	assert( bodyID <= this->nq && bodyID >= 1  );
 
 	// The First column of the Spatial Jacobian is the first joint twist array
-	// Hence, saving the first joint twist values to the Spatial Jacobian
+	// Initialization
+	this->JS = Eigen::MatrixXd::Zero( 6,  this->nq );
 	this->JS.col( 0 ) = this->JointTwists.col( 0 );
 
-	Eigen::MatrixXd H_tmp( 4, 4 );
-	H_tmp = Eigen::MatrixXd::Identity( 4, 4 );
+	Eigen::MatrixXd H_tmp = Eigen::MatrixXd::Identity( 4, 4 );
 
 	for( int i = 0; i < bodyID-1; i ++ )
 	{
@@ -220,8 +201,7 @@ Eigen::MatrixXd RobotPrimitive::getHybridJacobian( const Eigen::VectorXd &q_arr 
 	// Get the position of the end-effector
 	Eigen::Matrix4d H_EE = this->getForwardKinematics( q_arr );
 
-	Eigen::MatrixXd A;
-	A = Eigen::MatrixXd::Identity( 6, 6 );
+	Eigen::MatrixXd A = Eigen::MatrixXd::Identity( 6, 6 );
 
 	A.block< 3, 3 >( 0, 3 ) = -vec2SkewSym( H_EE.block< 3, 1 >( 0, 3 ) );
 	
@@ -236,8 +216,7 @@ Eigen::MatrixXd RobotPrimitive::getBodyJacobian( const Eigen::VectorXd &q_arr, c
 
 Eigen::MatrixXd RobotPrimitive::getMassMatrix( const Eigen::VectorXd &q_arr )
 {
-	Eigen::MatrixXd M( this->nq, this->nq );
-	M = Eigen::MatrixXd::Zero( this->nq, this->nq );
+	Eigen::MatrixXd M = Eigen::MatrixXd::Zero( this->nq, this->nq );
 
 	for( int i = 0; i < this->nq; i++ )
 	{
@@ -288,142 +267,120 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	// ======================================================== //
 	
 	// Joint limits, including some safe distance to physical limit
-	Eigen::VectorXd q_max = Eigen::VectorXd::Zero( this->nq );
-	Eigen::VectorXd q_min = Eigen::VectorXd::Zero( this->nq );
-
-	// q_max/q_min in degrees
-	// Currently, q_min is -q_max, but the values can change, thus manually defining the values.
-	q_max <<  163,  113,  163,  115,  160,  110,  165;
-	q_min << -163, -113, -163, -115, -160, -110, -165;
+	this->q_max = Eigen::VectorXd( this->nq );
+	this->q_min = Eigen::VectorXd( this->nq );
+	this->q_max <<  163,  113,  163,  115,  160,  110,  165;
+	this->q_min << -163, -113, -163, -115, -160, -110, -165;
 
 	// Changing degrees to radian
-	q_max *= M_PI/180;
-	q_min *= M_PI/180;
+	this->q_max *= M_PI/180;
+	this->q_min *= M_PI/180;
 
 	// Velocity and acceleration limits
-	Eigen::VectorXd dq_max  =  150 * Eigen::VectorXd::Ones( this->nq );
-	Eigen::VectorXd dq_min  = -150 * Eigen::VectorXd::Ones( this->nq );
-	Eigen::VectorXd ddq_max =  300 * Eigen::VectorXd::Ones( this->nq );
-	Eigen::VectorXd ddq_min = -300 * Eigen::VectorXd::Ones( this->nq );
-
-	// Saving all defined limits
-	this->q_max   =   q_max;
-	this->q_min   =   q_min;
-	this->dq_max  =  dq_max;
-	this->dq_min  =  dq_min;		
-	this->ddq_max = ddq_max;
-	this->ddq_min = ddq_min;	
+	this->dq_max  =  150 * Eigen::VectorXd::Ones( this->nq );
+	this->dq_min  = -150 * Eigen::VectorXd::Ones( this->nq );
+	this->ddq_max =  300 * Eigen::VectorXd::Ones( this->nq );
+	this->ddq_min = -300 * Eigen::VectorXd::Ones( this->nq );
 
 	// ======================================================== //
 	// ================= GEOMETRIC PROPERTIES  ================ //
 	// ======================================================== //
 
 	// The joint types are all 1 (i.e., revolute joints)
-	Eigen::VectorXd JointTypes = REVOLUTE_JOINT * Eigen::VectorXd::Ones( this->nq );
+	this->JointTypes = REVOLUTE_JOINT * Eigen::VectorXd::Ones( this->nq );
 
-	// Define the joint axes positions and directions 
-	// These are relative displacements, hence should add the values cumulatively 
-	// [2023.02.15] [Moses C. Nah] It might be good to have cumulative sum function 
-	//							   To simplify the code.
-	Eigen::MatrixXd AxisOrigins( 3, this->nq );
-	AxisOrigins.col( 0 ) = 						  Eigen::Vector3d( 0.0,      0.0, 152.5e-3 );  
-	AxisOrigins.col( 1 ) = AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0, -13.0e-3, 207.5e-3 );
-	AxisOrigins.col( 2 ) = AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0, +13.0e-3, 232.5e-3 );
-	AxisOrigins.col( 3 ) = AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0, +11.0e-3, 187.5e-3 );
-	AxisOrigins.col( 4 ) = AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0, -11.0e-3, 212.5e-3 );
-	AxisOrigins.col( 5 ) = AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0, -62.0e-3, 187.5e-3 );
-	AxisOrigins.col( 6 ) = AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0, +62.0e-3,  79.6e-3 );
+	// Initialization of the Axis Origins Matrix
+	this->AxisOrigins = Eigen::MatrixXd::Zero( 3, this->nq );
+
+	this->AxisOrigins.col( 0 ) = 							  Eigen::Vector3d( 0.0,      0.0, 152.5e-3 );  						  
+	this->AxisOrigins.col( 1 ) = this->AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0, -13.0e-3, 207.5e-3 );
+	this->AxisOrigins.col( 2 ) = this->AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0, +13.0e-3, 232.5e-3 );
+	this->AxisOrigins.col( 3 ) = this->AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0, +11.0e-3, 187.5e-3 );
+	this->AxisOrigins.col( 4 ) = this->AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0, -11.0e-3, 212.5e-3 );
+	this->AxisOrigins.col( 5 ) = this->AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0, -62.0e-3, 187.5e-3 );
+	this->AxisOrigins.col( 6 ) = this->AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0, +62.0e-3,  79.6e-3 );
 
 	// Axis Directions of the robot, Defining it for joints 1~7
-	Eigen::MatrixXd AxisDirections( 3, this->nq );
-	AxisDirections.col( 0 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
-	AxisDirections.col( 1 ) = Eigen::Vector3d( 0.0,  1.0,  0.0 );
-	AxisDirections.col( 2 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
-	AxisDirections.col( 3 ) = Eigen::Vector3d( 0.0, -1.0,  0.0 );
-	AxisDirections.col( 4 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
-	AxisDirections.col( 5 ) = Eigen::Vector3d( 0.0,  1.0,  0.0 );
-	AxisDirections.col( 6 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
+	this->AxisDirections = Eigen::MatrixXd::Zero( 3, this->nq );
+	this->AxisDirections.col( 0 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
+	this->AxisDirections.col( 1 ) = Eigen::Vector3d( 0.0,  1.0,  0.0 );
+	this->AxisDirections.col( 2 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
+	this->AxisDirections.col( 3 ) = Eigen::Vector3d( 0.0, -1.0,  0.0 );
+	this->AxisDirections.col( 4 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
+	this->AxisDirections.col( 5 ) = Eigen::Vector3d( 0.0,  1.0,  0.0 );
+	this->AxisDirections.col( 6 ) = Eigen::Vector3d( 0.0,  0.0,  1.0 );
 
 	// ======================================================== //
 	// ================== INERTIAL PROPERTIES  ================ //
 	// ======================================================== //
 	// Define the masses of the links
-	Eigen::VectorXd Masses( this->nq );	
-	Masses << 6.404, 7.89, 2.54, 4.82, 1.76, 2.50, 0.42;
+	this->Masses = Eigen::VectorXd( this->nq );
+	this->Masses << 6.404, 7.89, 2.54, 4.82, 1.76, 2.50, 0.42;
 	
 	// Eigen::Vector3d com[ nq ];
-	Eigen::MatrixXd COM( 3, this->nq );
-	COM.col( 0 ) = AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0,  -14.0e-3,  102.0e-3);  
-	COM.col( 1 ) = AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0,   16.0e-3,   64.0e-3);  
-	COM.col( 2 ) = AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0,   19.0e-3,   98.0e-3);  
-	COM.col( 3 ) = AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0,  -20.0e-3,   86.0e-3);
-	COM.col( 4 ) = AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0,  -13.0e-3,   66.0e-3);  
-	COM.col( 5 ) = AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0,   60.0e-3,   16.0e-3);  
-	COM.col( 6 ) = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0,    0.0e-3,   11.0e-3); 
+	this->COM = Eigen::MatrixXd( 3, this->nq );
+	this->COM.col( 0 ) = this->AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0,  -14.0e-3,  102.0e-3);  
+	this->COM.col( 1 ) = this->AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0,   16.0e-3,   64.0e-3);  
+	this->COM.col( 2 ) = this->AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0,   19.0e-3,   98.0e-3);  
+	this->COM.col( 3 ) = this->AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0,  -20.0e-3,   86.0e-3);
+	this->COM.col( 4 ) = this->AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0,  -13.0e-3,   66.0e-3);  
+	this->COM.col( 5 ) = this->AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0,   60.0e-3,   16.0e-3);  
+	this->COM.col( 6 ) = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0,    0.0e-3,   11.0e-3); 
 
 	// Define the Principal axes/moments of inertia of the link
-	Eigen::MatrixXd Inertias( 3, 3 * this->nq );	
-	Inertias.block< 3, 3 >( 0, 3 * 0 ) << 0.069, 0.000, 0.00,
-										  0.000, 0.071, 0.00,
-										  0.000, 0.000, 0.02;
+	this->Inertias = Eigen::MatrixXd( 3, 3 * this->nq );	
+	this->Inertias.block< 3, 3 >( 0, 3 * 0 ) << 0.069, 0.000, 0.00,
+										  		0.000, 0.071, 0.00,
+										  		0.000, 0.000, 0.02;
 
-	Inertias.block< 3, 3 >( 0, 3 * 1 ) << 0.08, 0.00, 0.00,
-				            	 		  0.00, 0.08, 0.00,
-								 		  0.00, 0.00, 0.01;
+	this->Inertias.block< 3, 3 >( 0, 3 * 1 ) << 0.08, 0.00, 0.00,
+			  			            	 		0.00, 0.08, 0.00,
+								 		  		0.00, 0.00, 0.01;
 
-	Inertias.block< 3, 3 >( 0, 3 * 2 ) << 0.02, 0.00, 0.00,
-				            	 		  0.00, 0.02, 0.00,
-								 		  0.00, 0.00, 0.06;
+	this->Inertias.block< 3, 3 >( 0, 3 * 2 ) << 0.02, 0.00, 0.00,
+				            	 		  		0.00, 0.02, 0.00,
+								 		  		0.00, 0.00, 0.06;
 	
-	Inertias.block< 3, 3 >( 0, 3 * 3 ) << 0.04, 0.00, 0.00, 
-				            	 		  0.00, 0.03, 0.00,
-								 		  0.00, 0.00, 0.01;
+	this->Inertias.block< 3, 3 >( 0, 3 * 3 ) << 0.04, 0.00, 0.00, 
+				            	 		  		0.00, 0.03, 0.00,
+								 		  		0.00, 0.00, 0.01;
 	
-	Inertias.block< 3, 3 >( 0, 3 * 4 ) << 0.01, 0.00, 0.00, 
-				            	 		  0.00, 0.01, 0.00,
-								 		  0.00, 0.00, 0.01;
+	this->Inertias.block< 3, 3 >( 0, 3 * 4 ) << 0.01, 0.00, 0.00, 
+				            	 		  		0.00, 0.01, 0.00,
+								 		  		0.00, 0.00, 0.01;
 
-	Inertias.block< 3, 3 >( 0, 3 * 5 ) << 0.007, 0.000, 0.000, 
-				        		 		  0.000, 0.006, 0.000,
-								 		  0.000, 0.000, 0.005;
+	this->Inertias.block< 3, 3 >( 0, 3 * 5 ) << 0.007, 0.000, 0.000, 
+				        		 		  		0.000, 0.006, 0.000,
+								 		  		0.000, 0.000, 0.005;
 
-	Inertias.block< 3, 3 >( 0, 3 * 6 ) << 0.0003, 0.0000, 0.0000, 
-				            	 		  0.0000, 0.0003, 0.0000,
-								 		  0.0000, 0.0000, 0.0005;
+	this->Inertias.block< 3, 3 >( 0, 3 * 6 ) << 0.0003, 0.0000, 0.0000, 
+				            	 		  		0.0000, 0.0003, 0.0000,
+								 		  		0.0000, 0.0000, 0.0005;
 
 	// Concatenate matrices for transformations and Generalized inertia matrix
-	Eigen::MatrixXd H_init( 4, 4 * ( this->nq + 1 ) );
-	Eigen::MatrixXd H_COM_init( 4, 4 * ( this->nq     ) );
-	Eigen::MatrixXd H_arrs( 4, 4 * ( this->nq     ) );
+	this->H_init 	 = Eigen::MatrixXd( 4, 4 * ( this->nq + 1 ) );
+	this->H_COM_init = Eigen::MatrixXd( 4, 4 * ( this->nq     ) );
+	this->H_arrs	 = Eigen::MatrixXd( 4, 4 * ( this->nq     ) );
 
 	for( int i = 0; i < this->nq; i++)
 	{
 		// The Rotation matrix is an identity matrix
-		H_init.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
+		this->H_init.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
 
 		// The translational part of H_init
-		H_init.block< 3, 1 >( 0, 4 * i + 3 ) = AxisOrigins.col( i );
+		this->H_init.block< 3, 1 >( 0, 4 * i + 3 ) = this->AxisOrigins.col( i );
 
-		H_COM_init.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
-		H_COM_init.block< 3, 1 >( 0, 4 * i + 3 ) = COM.col( i );
+		this->H_COM_init.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
+		this->H_COM_init.block< 3, 1 >( 0, 4 * i + 3 ) = this->COM.col( i );
 
-		H_arrs.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
+		// Initializing the H_arrs matrix with identity matrices
+		this->H_arrs.block< 4, 4 >( 0, 4 * i ) = Eigen::Matrix4d::Identity( 4, 4 );
 	}
 
 	// Setup the final H_init Matrix for Media Flange Touch
 	// Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );                    
-	Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0314 );                    
-	H_init.block< 4, 4 >( 0, 4 * this->nq 	  ) = Eigen::Matrix4d::Identity( 4, 4 );
-	H_init.block< 3, 1 >( 0, 4 * this->nq + 3 ) = FlangePos;
-
-	// Saving all of the calculated matrices
-	this->H_init 		 = H_init;
-	this->H_arrs 	 	 = H_arrs;
-	this->H_COM_init 	 = H_COM_init;
-	this->JointTypes  	 = JointTypes;
-	this->AxisOrigins 	 = AxisOrigins;
-	this->AxisDirections = AxisDirections;
-	this->Masses		 = Masses;
-	this->Inertias		 = Inertias;
+	Eigen::Vector3d FlangePos = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0314 );                    
+	this->H_init.block< 4, 4 >( 0, 4 * this->nq	 	) = Eigen::Matrix4d::Identity( 4, 4 );
+	this->H_init.block< 3, 1 >( 0, 4 * this->nq + 3 ) = FlangePos;
 
 }

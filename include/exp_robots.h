@@ -33,6 +33,7 @@ class RobotPrimitive
 		Eigen::MatrixXd AxisOrigins;
 		Eigen::MatrixXd AxisDirections;
 		Eigen::MatrixXd JointTwists;
+		Eigen::MatrixXd COM;
 
 		Eigen::VectorXd q;
 		Eigen::VectorXd q_init;
