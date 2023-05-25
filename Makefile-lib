@@ -6,6 +6,7 @@
 
 all: 
 	mkdir -p build
+	mkdir -p lib
 	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 -c ./src/exp_math.cpp -o ./build/exp_math.o 
 	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 -c ./src/exp_robots.cpp -o ./build/exp_robots.o 
 	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 -c ./src/exp_utils.cpp -o ./build/exp_utils.o 
