@@ -10,4 +10,5 @@ all:
 	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 -c ./src/exp_math.cpp -o ./build/exp_math.o 
 	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 -c ./src/exp_robots.cpp -o ./build/exp_robots.o 
 	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 -c ./src/exp_utils.cpp -o ./build/exp_utils.o 
-	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 ./build/exp_math.o ./build/exp_robots.o ./build/exp_utils.o -shared -o ./lib/libExplicit-cpp.so
+	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 -c ./src/exp_trajs.cpp -o ./build/exp_trajs.o 
+	g++ -Iinclude -IEigen -MMD -MP -Wall -fPIC -g -O3 -std=c++17 ./build/exp_math.o ./build/exp_robots.o ./build/exp_utils.o ./build/exp_trajs.o  -shared -o ./lib/libExplicit-cpp.so
