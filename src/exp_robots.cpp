@@ -378,8 +378,9 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	}
 
 	// Setup the final H_init Matrix for Media Flange Touch
-	// Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );                    
-	Eigen::Vector3d FlangePos = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0314 );                    
+	// Just checked that the value is the following.
+	Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );                    
+	// Eigen::Vector3d FlangePos = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0314 );                    
 	this->H_init.block< 4, 4 >( 0, 4 * this->nq	 	) = Eigen::Matrix4d::Identity( 4, 4 );
 	this->H_init.block< 3, 1 >( 0, 4 * this->nq + 3 ) = FlangePos;
 
