@@ -2,54 +2,37 @@
 #include <chrono>
 #include <Eigen/Dense>
 #include <cassert>  
+#include <fstream>
+
 
 #include "exp_utils.h"
 #include "exp_math.h"
 #include "exp_robots.h"
 #include "exp_constants.h"
+#include "exp_trajs.h"
+
 
 int main( )
 {
+	std::ofstream file1("./data/test1.txt");
+	std::ofstream file2("./data/test2.txt");
+	std::ofstream file3("./data/test3.txt");
 
+	Eigen::VectorXd q0i = Eigen::VectorXd::Zero( 7 );
+	q0i << 0.2, 0.1, 0.1, 0.1, 0.2, 0.3, 0.2;
+
+	Eigen::VectorXd q0f = Eigen::VectorXd::Zero( 7 );
+	q0f << 0.5, 0.4, 0.2, 0.8, 1.0, 0.7, 0.4;
+
+	MinimumJerkTrajectory traj1 = MinimumJerkTrajectory( 7, q0i, q0f, 6, 2 );
+	double dt = 0.01;
+
+	for( int i = 0; i<= 1000; i++)
+	{	
+		file1 << traj1.getPosition( dt * i ) << std::endl;
+		file2 << traj1.getVelocity( dt * i ) << std::endl;
+		file3 << traj1.getAcceleration( dt * i ) << std::endl;
+	}		
 	
-	iiwa14 myLBR( 1, "iiwa1" );
-	myLBR.init( );
-
-	Eigen::VectorXd q_arr_iiwa ( myLBR.nq );
-	q_arr_iiwa << 0.2, 0.1, 0.1, 0.1, 0.2, 0.3, 0.2;
-
-	auto start = std::chrono::steady_clock::now( );
-	auto end   = std::chrono::steady_clock::now( );
-
-	start = std::chrono::steady_clock::now( );
-	Eigen::MatrixXd H3 = myLBR.getForwardKinematics( q_arr_iiwa );
-	Eigen::MatrixXd H4 = myLBR.getHybridJacobian( q_arr_iiwa );
-	Eigen::MatrixXd H1 = myLBR.getMassMatrix( q_arr_iiwa );
-	end = std::chrono::steady_clock::now( );
-
-	std::cout << "Elapsed time for FK, HJ, M1 "
-        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-        << " us" << std::endl;		
-
-	start = std::chrono::steady_clock::now( );
-	H3 = myLBR.getForwardKinematics( q_arr_iiwa );
-	H4 = myLBR.getHybridJacobian( q_arr_iiwa );
-	Eigen::MatrixXd H2 = myLBR.getMassMatrix2( q_arr_iiwa );
-	end = std::chrono::steady_clock::now( );
-	
-	std::cout << "Elapsed time for FK, HJ, M2 "
-        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-        << " us" << std::endl;		
-
-	std::cout << H1 << std::endl;
-	std::cout << "========================" << std::endl;
-	std::cout << H2 << std::endl;
-	std::cout << "========================" << std::endl;
-	std::cout << H3 << std::endl;	
-	std::cout << "========================" << std::endl;
-	std::cout << H4 << std::endl;		
-
-	
-
 	return 0;
 }

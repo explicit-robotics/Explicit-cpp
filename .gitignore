@@ -5,3 +5,4 @@ test
 .vscode
 .DS_store
 lib
+data

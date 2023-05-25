@@ -1,7 +1,6 @@
 #include <cmath>
 #include <iostream>
 #include <Eigen/Dense>
-#include <vector>
 
 #include "exp_math.h"
 #include "exp_utils.h"
