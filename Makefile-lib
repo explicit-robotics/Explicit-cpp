@@ -1,6 +1,5 @@
-# This makefile is to run local .cpp files to test the library
-# The local .cpp files are in the main directory.
-# Simply run "make" in the terminal
+# This makefile is to make the shared library, .so file
+# Simply run "make -f Makefile-lib" in the terminal
 
 
 .PHONY: all 
