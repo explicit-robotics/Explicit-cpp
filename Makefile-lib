@@ -1,4 +1,4 @@
-# This makefile is to make the shared library, .so file
+# This makefile is to create the shared library, .so file
 # Simply run "make -f Makefile-lib" in the terminal
 
 

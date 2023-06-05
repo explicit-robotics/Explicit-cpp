@@ -73,11 +73,6 @@ class RobotPrimitive
 		Eigen::MatrixXd A_Mat1;		// (6 x nq) array, collection of joint twists expressed in {i} frame	
 		Eigen::MatrixXd A_Mat2;		// The Diagonalized version of A_Mat1, Eq. 8.60 of Modern Robotics. 
 
-		/* 
-			Animation Properties
-			TODO
-		*/
-
 		/*
 			Etc. 	
 		*/
@@ -109,8 +104,7 @@ class RobotPrimitive
 
 		Eigen::MatrixXd getBodyJacobian( const Eigen::VectorXd &q_arr, const int bodyID, const int type );	
 
-		Eigen::MatrixXd getMassMatrix(  const Eigen::VectorXd &q_arr );	
-		Eigen::MatrixXd getMassMatrix2( const Eigen::VectorXd &q_arr );	
+		Eigen::MatrixXd getMassMatrix( const Eigen::VectorXd &q_arr );	
 
 };
 

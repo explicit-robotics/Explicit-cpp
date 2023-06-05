@@ -194,7 +194,8 @@ Eigen::MatrixXd RobotPrimitive::getHybridJacobian( const Eigen::VectorXd &q_arr 
 	assert( this->nq == q_arr.size( ) );
 
 	// Getting the end-effector's Hybrid Jacobian.
-	// Note that "Hybrid Jacobian" is by definition, the Jacobian of the end-effector
+	// Note that "Hybrid Jacobian" is by definition, the Jacobian of the end-effector coordinate frame
+	// with respect to the base coordinate frame.
 
 	// First, get the Spatial Jacobian
 	// Get the position of the end-effector
@@ -214,18 +215,6 @@ Eigen::MatrixXd RobotPrimitive::getBodyJacobian( const Eigen::VectorXd &q_arr, c
 }
 
 Eigen::MatrixXd RobotPrimitive::getMassMatrix( const Eigen::VectorXd &q_arr )
-{
-	Eigen::MatrixXd M = Eigen::MatrixXd::Zero( this->nq, this->nq );
-
-	for( int i = 0; i < this->nq; i++ )
-	{
-		M += this->getBodyJacobian( q_arr, i + 1, TYPE_COM ).transpose( ) * this->M_Mat1.block< 6, 6 >( 0, 6 * i ) * this->getBodyJacobian( q_arr, i+ 1 , TYPE_COM );
-	} 
-
-	return M;
-}
-
-Eigen::MatrixXd RobotPrimitive::getMassMatrix2( const Eigen::VectorXd &q_arr )
 {
 
 	Eigen::MatrixXd Ai( 6, 1 );
@@ -291,7 +280,7 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	// Initialization of the Axis Origins Matrix
 	this->AxisOrigins = Eigen::MatrixXd::Zero( 3, this->nq );
 
-	this->AxisOrigins.col( 0 ) = 							  Eigen::Vector3d( 0.0,      0.0, 152.5e-3 );  						  
+	this->AxisOrigins.col( 0 ) = Eigen::Vector3d( 0.0,      0.0, 152.5e-3 );  						  
 	this->AxisOrigins.col( 1 ) = this->AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0, -13.0e-3, 207.5e-3 );
 	this->AxisOrigins.col( 2 ) = this->AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0, +13.0e-3, 232.5e-3 );
 	this->AxisOrigins.col( 3 ) = this->AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0, +11.0e-3, 187.5e-3 );
@@ -377,8 +366,8 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	}
 
 	// Setup the final H_init Matrix for Media Flange Touch
-	// Just checked that the value is the following.
-	Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );                    
+	Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );
+	// For all other Media Flanges:                    
 	// Eigen::Vector3d FlangePos = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0314 );                    
 	this->H_init.block< 4, 4 >( 0, 4 * this->nq	 	) = Eigen::Matrix4d::Identity( 4, 4 );
 	this->H_init.block< 3, 1 >( 0, 4 * this->nq + 3 ) = FlangePos;
