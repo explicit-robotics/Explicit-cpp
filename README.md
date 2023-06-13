@@ -10,7 +10,7 @@ This software was developed by [Moses Chong-ook Nah](https://mosesnah-shared.git
 Detailed documentation of the software can be [checked here](https://explicit-robotics.github.io/).
 
 # Licence 
-The software is licenced by MIT under Case No. 24812 and and it's intended use is for academic and/or non-profit internal research purposes. The licence can be found in our repository. 
+The software is licenced by MITs and and it's intended use is for academic and/or non-profit internal research purposes. The licence can be found in our repository. 
 
 # Expplicit-MATLAB
 If you are interested in the MATLAB version of this software, check out [Explicit-MATLAB](https://github.com/explicit-robotics/Explicit-MATLAB).
