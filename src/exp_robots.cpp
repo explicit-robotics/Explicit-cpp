@@ -259,6 +259,8 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	this->q_min = Eigen::VectorXd( this->nq );
 	this->q_max <<  163,  113,  163,  115,  160,  110,  165;
 	this->q_min << -163, -113, -163, -115, -160, -110, -165;
+	// this->q_max <<   70, 70, 70, 70, 70, 70, 70;
+	// this->q_min <<  -70,-70,-70,-70,-70,-70,-70;
 
 	// Changing degrees to radian
 	this->q_max *= M_PI/180;
@@ -372,4 +374,259 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	this->H_init.block< 4, 4 >( 0, 4 * this->nq	 	) = Eigen::Matrix4d::Identity( 4, 4 );
 	this->H_init.block< 3, 1 >( 0, 4 * this->nq + 3 ) = FlangePos;
 
+}
+
+
+
+Eigen::VectorXd iiwa14::addIIWALimits( Eigen::VectorXd q, Eigen::VectorXd qDot, Eigen::MatrixXd Minv, Eigen::VectorXd tau, double dt )
+{
+	/* This method is the implementation based on the paper:
+	Muñoz Osorio, Juan & Fiore, Mario & Allmendinger, Felix. (2018). 
+	Operational Space Formulation Under Joint Constraints. 
+	doi: 10.1115/DETC2018-86058.   
+	*/
+
+	Eigen::VectorXd dt2 	 = Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd dtvar 	 = Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd rho_down = Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd rho_up 	 = Eigen::VectorXd::Zero( this->nq, 1 );
+
+    Eigen::VectorXd qDotMaxFromQ 	= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd qDotMinFromQ 	= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd qDotMax_QDotDot = Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd qDotMin_QDotDot = Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd vMaxVec 		= Eigen::VectorXd::Zero( 3, 1 );
+	Eigen::VectorXd vMinVec 		= Eigen::VectorXd::Zero( 3, 1 );
+	Eigen::VectorXd qDotMaxFinal 	= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd qDotMinFinal 	= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd aMaxqDot 		= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd aMinqDot 		= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd aMaxQ 			= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd aMinQ 			= Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd aMaxVec 		= Eigen::VectorXd::Zero( 3, 1 );
+	Eigen::VectorXd aMinVec 		= Eigen::VectorXd::Zero( 3, 1 );
+	Eigen::VectorXd qDotDotMaxFinal = Eigen::VectorXd::Zero( this->nq, 1 );
+	Eigen::VectorXd qDotDotMinFinal = Eigen::VectorXd::Zero( this->nq, 1 );
+    Eigen::MatrixXd Iden 			= Eigen::MatrixXd::Identity( this->nq, this->nq );
+    Eigen::VectorXd tauJL 			= Eigen::VectorXd::Zero( this->nq ,1 );
+    Eigen::VectorXd qDotDotGot 		= Eigen::VectorXd::Zero( this->nq, 1 );
+    Eigen::MatrixXd Js 				= Eigen::MatrixXd::Zero( 3 , this->nq );
+
+    double lowestdtFactor = 10;
+
+	// Distance limits
+    rho_down = q - this->q_min;
+    rho_up = this->q_max - q ;
+    dtvar[ 0 ] = 3 * dt;
+    dtvar[ 1 ] = 3 * dt;
+    dtvar[ 2 ] = 2 * dt;
+    dtvar[ 3 ] = 3 * dt;
+    dtvar[ 4 ] = dt;
+    dtvar[ 5 ] = dt;
+    dtvar[ 6 ] = dt;
+
+    for ( int i = 0 ; i < this->nq ; i++ )
+    {
+        dt2[ i ] = dtvar[ i ];
+        if ( rho_down[i] < 10 * M_PI / 180 )
+        {
+            if ( rho_down[ i ] < 0 )
+                rho_down[ i ] = 0;
+            dt2[ i ] = ( lowestdtFactor + ( std::sqrt( lowestdtFactor ) * std::sqrt( rho_down[ i ] * 180 / M_PI ) ) ) * dtvar[ i ];
+
+            if ( dt2[ i ] < lowestdtFactor * dtvar[ i ] )
+                dt2[ i ] = lowestdtFactor * dtvar[ i ];
+        }
+        if ( rho_up[ i ] < 10 * M_PI / 180 )
+        {
+
+            if ( rho_up[ i ] < 0 )
+            {
+				rho_up[ i ] = 0;
+			}
+				
+            dt2[ i ] = ( lowestdtFactor + ( std::sqrt( lowestdtFactor ) * std::sqrt( rho_up[ i ] * 180 / M_PI ) ) ) * dtvar[ i ];
+
+            if ( dt2[ i ] < lowestdtFactor * dtvar[ i ] )
+			{
+				dt2[ i ] = lowestdtFactor * dtvar[ i ];
+			}        
+
+        }
+
+		// Check for min. and max. joint velocity
+		double max_val =  1000000;
+		double min_val = -1000000;
+
+        qDotMaxFromQ[ i ] = ( this->q_max[ i ] - q[ i ] ) / dt2[ i ];
+        qDotMinFromQ[ i ] = ( this->q_min[ i ] - q[ i ] ) / dt2[ i ];
+        qDotMax_QDotDot[ i ] = std::sqrt( 2 * this->ddq_max[ i ] * ( this->q_max[ i ] - q[ i ] ) );
+        qDotMin_QDotDot[ i ] = - std::sqrt( 2 * this->ddq_max[ i ] * ( q[ i ] - this->q_min[ i ] ) );
+
+        if( this->q_max[ i ] - q[ i ] < 0 )
+		{
+			qDotMax_QDotDot[ i ] = max_val;
+		}
+            
+        if( q[ i ] - this->q_min[ i ] < 0 )
+		{
+ 			qDotMin_QDotDot[ i ] = min_val;
+		}
+           
+        //vMaxVec = Eigen::VectorXd( this->dq_max[ i ], qDotMaxFromQ[ i ], qDotMax_QDotDot[ i ] );
+		vMaxVec[ 0 ] = this->dq_max[ i ];
+		vMaxVec[ 1 ] = qDotMaxFromQ[ i ];
+		vMaxVec[ 2 ] = qDotMax_QDotDot[ i ];
+		qDotMaxFinal[ i ] = getMinValue( vMaxVec );
+
+        //vMinVec = Eigen::VectorXd( this->dq_min[ i ], qDotMinFromQ[ i ], qDotMin_QDotDot[ i ] );
+		vMinVec[ 0 ] = this->dq_min[ i ];
+		vMinVec[ 1 ] = qDotMinFromQ[ i ];
+		vMinVec[ 2 ] = qDotMin_QDotDot[ i ];
+        qDotMinFinal[ i ] = getMaxValue( vMinVec );
+
+		// Check for min. and max. joint acceleration
+        aMaxqDot[ i ] = ( qDotMaxFinal[ i ] - qDot[ i ] ) / dtvar[ i ];
+        aMinqDot[ i ] = ( qDotMinFinal[ i ] - qDot[ i ] ) / dtvar[ i ];
+
+        aMaxQ[ i ] = 2 * ( this->q_max[ i ] - q[ i ] - qDot[ i ] * dt2[ i ] ) / std::pow( dt2[ i ] , 2 );
+        aMinQ[ i ] = 2 * ( this->q_min[ i ] - q[ i ] - qDot[ i ] * dt2[ i ] ) / std::pow( dt2[ i ] , 2 );
+
+        //aMaxVec = Eigen::VectorXd( aMaxQ[ i ], aMaxqDot[ i ] , max_val );
+		aMaxVec[ 0 ] = aMaxQ[ i ];
+		aMaxVec[ 1 ] = aMaxqDot[ i ];
+		aMaxVec[ 2 ] = max_val;
+        qDotDotMaxFinal[ i ] = getMinValue( aMaxVec );
+
+        //aMinVec = Eigen::VectorXd( aMinQ[ i ], aMinqDot[ i ] , min_val );
+		aMinVec[ 0 ] = aMinQ[ i ];
+		aMinVec[ 1 ] = aMinqDot[ i ];
+		aMinVec[ 2 ] = min_val;
+        qDotDotMinFinal[ i ] = getMaxValue( aMinVec );
+
+		// Check admissible area from the other side
+        if( qDotDotMaxFinal[ i ] < qDotDotMinFinal[ i ] )
+        {
+            //vMaxVec = Eigen::VectorXd( INFINITY, qDotMaxFromQ[ i ], qDotMax_QDotDot[ i ] );
+			vMaxVec[ 0 ] = INFINITY;
+			vMaxVec[ 1 ] = qDotMaxFromQ[ i ];
+			vMaxVec[ 2 ] = qDotMax_QDotDot[ i ];
+            qDotMaxFinal[ i ] = getMinValue( vMaxVec );
+
+            //vMinVec = Eigen::VectorXd( -INFINITY, qDotMinFromQ[ i ], qDotMin_QDotDot[ i ] );
+			vMinVec[ 0 ] = -INFINITY;
+			vMinVec[ 1 ] = qDotMinFromQ[ i ];
+			vMinVec[ 2 ] = qDotMin_QDotDot[ i ];
+            qDotMinFinal[ i ] = getMaxValue( vMinVec );
+
+            aMaxqDot[ i ] = ( qDotMaxFinal[ i ] - qDot[ i ] ) / dtvar[ i ];
+            aMinqDot[ i ] = ( qDotMinFinal[ i ] - qDot[ i ] ) / dtvar[ i ];
+
+            //aMaxVec = Eigen::VectorXd( aMaxQ[ i ], aMaxqDot[ i ], max_val);
+			aMaxVec[ 0 ] = aMaxQ[ i ];
+			aMaxVec[ 1 ] = aMaxqDot[ i ];
+			aMaxVec[ 2 ] = max_val;
+            qDotDotMaxFinal[ i ] = getMinValue( aMaxVec );
+            //aMinVec = Eigen::VectorXd( aMinQ[ i ], aMinqDot[ i ], min_val);
+			aMinVec[ 0 ] = aMinQ[ i ];
+			aMinVec[ 1 ] = aMinqDot[ i ];
+			aMinVec[ 2 ] = min_val;
+            qDotDotMinFinal[ i ] = getMaxValue( aMinVec );
+        }
+    }
+
+	// Calculate saturation torque if joint limit is exceeded
+    Eigen::VectorXd qDotDotS = Eigen::VectorXd::Zero( this->nq, 1 );
+    Eigen::VectorXd tauS = Eigen::VectorXd::Zero( this->nq, 1 );
+    Eigen::MatrixXd Psat = Iden;
+    bool LimitedExceeded = true;
+    bool CreateTaskSat = false;
+    int NumSatJoints = 0;
+    Eigen::VectorXd theMostCriticalOld = Eigen::VectorXd::Zero( this->nq, 1 );
+    theMostCriticalOld.conservativeResize( 1 );
+    theMostCriticalOld[ 0 ] = 100;
+    bool isThere = false;
+    int iO = 0;
+    int cycle = 0;
+
+    while ( LimitedExceeded == true )
+    {
+        LimitedExceeded = false;
+
+        if ( CreateTaskSat == true )
+        {
+            Js.conservativeResize( NumSatJoints, this->nq );
+            for ( int i = 0; i < NumSatJoints; i++ )
+            {
+                for( int k = 0; k < this->nq; k++ )
+                {
+                    Js( i, k ) = 0;
+                }
+				int m = theMostCriticalOld[ i ];
+				Js( i, m ) = 1;
+            }
+
+            Eigen::MatrixXd LambdaSatInv = Js * Minv * Js.transpose();
+            Eigen::MatrixXd LambdaSatInv_aux = LambdaSatInv * LambdaSatInv.transpose();
+            Eigen::MatrixXd LambdaSat_aux = LambdaSatInv_aux.inverse();
+            Eigen::MatrixXd LambdaSat = LambdaSatInv.transpose() * LambdaSat_aux;
+
+            Eigen::MatrixXd JsatBar = Minv * Js.transpose() * LambdaSat;
+            Psat = Iden - Js.transpose() * JsatBar.transpose();
+            Eigen::VectorXd xDotDot_s = Js * qDotDotS;
+            tauS = Js.transpose() * ( LambdaSat * xDotDot_s );
+        }
+
+		// Project control torque in nullspace of saturated torque
+        tauJL = tauS + Psat * tau;
+
+		// Calculate resulting acceleration
+        qDotDotGot = Minv * tauJL; 
+
+		// Saturate most critical joint
+        for ( int i = 0; i < this->nq; i++ )
+        {
+            if ( ( qDotDotMaxFinal[ i ] + 0.001 < qDotDotGot[ i ] )  || ( qDotDotGot[ i ] < qDotDotMinFinal[ i ] - 0.001 ) )
+            {
+                LimitedExceeded = true;
+                CreateTaskSat = true;
+
+                for ( int k = 0; k < theMostCriticalOld.size(); k++ )
+                {
+                    if ( i == theMostCriticalOld[ k ] )
+                    {
+                        isThere = true;
+                    }
+                }
+                if ( isThere == false )
+                {
+                    theMostCriticalOld.conservativeResize( iO + 1 );
+                    theMostCriticalOld[ iO ] = i;
+                    iO += 1;
+                }
+            }
+        }
+
+        if ( LimitedExceeded == true )
+        {
+            NumSatJoints = iO;
+            theMostCriticalOld.conservativeResize( iO );
+            cycle += 1;
+            if ( cycle > 8 )
+                LimitedExceeded = false;
+
+            for ( int i = 0; i < theMostCriticalOld.size(); i++ )
+            {
+                int jM = theMostCriticalOld[ i ];
+
+                if ( qDotDotGot[ jM ] > qDotDotMaxFinal[ jM ] )
+                    qDotDotS[ jM ] = qDotDotMaxFinal[ jM ];
+
+                if ( qDotDotGot[ jM ] < qDotDotMinFinal[ jM ] )
+                    qDotDotS[ jM ] = qDotDotMinFinal[ jM ];
+            }
+        }
+    }
+
+    return tauJL;
 }
