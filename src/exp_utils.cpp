@@ -49,7 +49,7 @@ bool isSkewSymmetric( const Eigen::MatrixXd &M )
 	return true;
 }
 
-double getMaxValue( Eigen::VectorXd &myVector )
+double getMaxValue( const Eigen::VectorXd &myVector )
 {
     double auxMax = myVector[ 0 ];
 
@@ -61,7 +61,7 @@ double getMaxValue( Eigen::VectorXd &myVector )
     return auxMax;
 }
 
-double getMinValue( Eigen::VectorXd &myVector )
+double getMinValue( const Eigen::VectorXd &myVector )
 {
     double auxMin = myVector[ 0 ];
 	 

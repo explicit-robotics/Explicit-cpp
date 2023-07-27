@@ -27,9 +27,9 @@ bool isSymmetric( const Eigen::MatrixXd &M );
  */
 bool isSkewSymmetric( const Eigen::MatrixXd &M );
 
-double getMaxValue( Eigen::VectorXd &myVector );
+double getMaxValue( const Eigen::VectorXd &myVector );
 
-double getMinValue( Eigen::VectorXd &myVector );
+double getMinValue( const Eigen::VectorXd &myVector );
 
 
 #endif

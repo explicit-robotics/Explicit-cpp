@@ -116,7 +116,7 @@ class iiwa14 : public RobotPrimitive
 		iiwa14( ){};
 		iiwa14( const int ID, const char* name );		
 
-		Eigen::VectorXd addIIWALimits( Eigen::VectorXd q, Eigen::VectorXd qDot, Eigen::MatrixXd Minv, const Eigen::VectorXd tau, double dt );	
+		Eigen::VectorXd addIIWALimits( Eigen::VectorXd q, Eigen::VectorXd dq, Eigen::MatrixXd M, Eigen::VectorXd tau, double dt );	
 
 };
 
