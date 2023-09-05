@@ -308,44 +308,48 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	this->Masses << 6.404, 7.89, 2.54, 4.82, 1.76, 2.50, 0.42;
 	
 	// Eigen::Vector3d com[ nq ];
+	// The Center of Mass Locations are based on the Data from Drake Software of Toyota Research Institute.
+	// [REF] https://github.com/RobotLocomotion/drake/blob/master/manipulation/models/iiwa_description/urdf/iiwa14_spheres_dense_collision.urdf 
 	this->COM = Eigen::MatrixXd( 3, this->nq );
-	this->COM.col( 0 ) = this->AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0,  -14.0e-3,  102.0e-3);  
-	this->COM.col( 1 ) = this->AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0,   16.0e-3,   64.0e-3);  
-	this->COM.col( 2 ) = this->AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0,   19.0e-3,   98.0e-3);  
-	this->COM.col( 3 ) = this->AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0,  -20.0e-3,   86.0e-3);
-	this->COM.col( 4 ) = this->AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0,  -13.0e-3,   66.0e-3);  
-	this->COM.col( 5 ) = this->AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0,   60.0e-3,   16.0e-3);  
-	this->COM.col( 6 ) = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0,    0.0e-3,   11.0e-3); 
+	this->COM.col( 0 ) = this->AxisOrigins.col( 0 ) + Eigen::Vector3d( 0.0000, -0.0300,  0.1200 );  
+	this->COM.col( 1 ) = this->AxisOrigins.col( 1 ) + Eigen::Vector3d( 0.0003,  0.0590,  0.0420 );  
+	this->COM.col( 2 ) = this->AxisOrigins.col( 2 ) + Eigen::Vector3d( 0.0000,  0.0300,  0.1300 );  
+	this->COM.col( 3 ) = this->AxisOrigins.col( 3 ) + Eigen::Vector3d( 0.0000,  0.0670,  0.0340 );
+	this->COM.col( 4 ) = this->AxisOrigins.col( 4 ) + Eigen::Vector3d( 0.0001,  0.0210,  0.0760 );  
+	this->COM.col( 5 ) = this->AxisOrigins.col( 5 ) + Eigen::Vector3d( 0.0000,  0.0006,  0.0004 );  
+	this->COM.col( 6 ) = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0000,  0.0000,  0.0200 ); 
 
 	// Define the Principal axes/moments of inertia of the link
+	// The inertia values are based on the Data from Drake Software of Toyota Research Institute.
+	// [REF] https://github.com/RobotLocomotion/drake/blob/master/manipulation/models/iiwa_description/urdf/iiwa14_spheres_dense_collision.urdf 	
 	this->Inertias = Eigen::MatrixXd( 3, 3 * this->nq );	
-	this->Inertias.block< 3, 3 >( 0, 3 * 0 ) << 0.069, 0.000, 0.00,
-										  		0.000, 0.071, 0.00,
-										  		0.000, 0.000, 0.02;
+	this->Inertias.block< 3, 3 >( 0, 3 * 0 ) << 0.0330, 0.0000, 0.0000,
+										  		0.0000, 0.0333, 0.0000,
+										  		0.0000, 0.0000, 0.0123;
 
-	this->Inertias.block< 3, 3 >( 0, 3 * 1 ) << 0.08, 0.00, 0.00,
-			  			            	 		0.00, 0.08, 0.00,
-								 		  		0.00, 0.00, 0.01;
+	this->Inertias.block< 3, 3 >( 0, 3 * 1 ) << 0.0305, 0.0000, 0.0000,
+			  			            	 		0.0000, 0.0304, 0.0000,
+								 		  		0.0000, 0.0000, 0.0110;
 
-	this->Inertias.block< 3, 3 >( 0, 3 * 2 ) << 0.02, 0.00, 0.00,
-				            	 		  		0.00, 0.02, 0.00,
-								 		  		0.00, 0.00, 0.06;
+	this->Inertias.block< 3, 3 >( 0, 3 * 2 ) << 0.0250, 0.0000, 0.0000,
+				            	 		  		0.0000, 0.0238, 0.0000,
+								 		  		0.0000, 0.0000, 0.0076;
 	
-	this->Inertias.block< 3, 3 >( 0, 3 * 3 ) << 0.04, 0.00, 0.00, 
-				            	 		  		0.00, 0.03, 0.00,
-								 		  		0.00, 0.00, 0.01;
+	this->Inertias.block< 3, 3 >( 0, 3 * 3 ) << 0.0170, 0.0000, 0.0000, 
+				            	 		  		0.0000, 0.0164, 0.0000,
+								 		  		0.0000, 0.0000, 0.0060;
 	
-	this->Inertias.block< 3, 3 >( 0, 3 * 4 ) << 0.01, 0.00, 0.00, 
-				            	 		  		0.00, 0.01, 0.00,
-								 		  		0.00, 0.00, 0.01;
+	this->Inertias.block< 3, 3 >( 0, 3 * 4 ) << 0.0100, 0.0000, 0.0000, 
+				            	 		  		0.0000, 0.0087, 0.0000,
+								 		  		0.0000, 0.0000, 0.0045;
 
-	this->Inertias.block< 3, 3 >( 0, 3 * 5 ) << 0.007, 0.000, 0.000, 
-				        		 		  		0.000, 0.006, 0.000,
-								 		  		0.000, 0.000, 0.005;
+	this->Inertias.block< 3, 3 >( 0, 3 * 5 ) << 0.0049, 0.0000, 0.0000, 
+				        		 		  		0.0000, 0.0036, 0.0000,
+								 		  		0.0000, 0.0000, 0.0047;
 
-	this->Inertias.block< 3, 3 >( 0, 3 * 6 ) << 0.0003, 0.0000, 0.0000, 
-				            	 		  		0.0000, 0.0003, 0.0000,
-								 		  		0.0000, 0.0000, 0.0005;
+	this->Inertias.block< 3, 3 >( 0, 3 * 6 ) << 0.0010, 0.0000, 0.0000, 
+				            	 		  		0.0000, 0.0010, 0.0000,
+								 		  		0.0000, 0.0000, 0.0010;
 
 	// Concatenate matrices for transformations and Generalized inertia matrix
 	this->H_init 	 = Eigen::MatrixXd( 4, 4 * ( this->nq + 1 ) );
@@ -368,9 +372,13 @@ iiwa14::iiwa14( const int ID, const char* name ) : RobotPrimitive( ID , name )
 	}
 
 	// Setup the final H_init Matrix for Media Flange Touch
-	Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );
-	// For all other Media Flanges:                    
+	Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0 );
+	// One can also comment out to use the following line
+	// where the end-effector is defined at the center of the flange.
+	// Eigen::Vector3d FlangePos = AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.071 );
+	// Also for a different flange with a shorter length.
 	// Eigen::Vector3d FlangePos = this->AxisOrigins.col( 6 ) + Eigen::Vector3d( 0.0, 0.0, 0.0314 );                    
+
 	this->H_init.block< 4, 4 >( 0, 4 * this->nq	 	) = Eigen::Matrix4d::Identity( 4, 4 );
 	this->H_init.block< 3, 1 >( 0, 4 * this->nq + 3 ) = FlangePos;
 
