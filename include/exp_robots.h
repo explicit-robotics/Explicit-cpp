@@ -96,11 +96,13 @@ class RobotPrimitive
 
 		Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr );		
 		Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr, const int bodyID, const int type );
+		Eigen::Matrix4d getForwardKinematics( const Eigen::VectorXd &q_arr, const int bodyID, const Eigen::Vector3d &p_pos );		
 
 		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr );		
 		Eigen::MatrixXd getSpatialJacobian( const Eigen::VectorXd &q_arr, const int bodyID );		
 
 		Eigen::MatrixXd getHybridJacobian( const Eigen::VectorXd &q_arr );
+		Eigen::MatrixXd getHybridJacobian( const Eigen::VectorXd &q_arr, const Eigen::Vector3d &p_pos );
 
 		Eigen::MatrixXd getBodyJacobian( const Eigen::VectorXd &q_arr, const int bodyID, const int type );	
 
@@ -115,6 +117,7 @@ class iiwa14 : public RobotPrimitive
 	public:
 		iiwa14( ){};
 		iiwa14( const int ID, const char* name );		
+		iiwa14( const int ID, const char* name, const Eigen::Vector3d &flange );				
 
 		Eigen::VectorXd addIIWALimits( Eigen::VectorXd q, Eigen::VectorXd dq, Eigen::MatrixXd M, Eigen::VectorXd tau, double dt );	
 
