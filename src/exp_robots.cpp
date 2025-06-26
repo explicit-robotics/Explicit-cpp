@@ -26,8 +26,8 @@ void RobotPrimitive::init( )
 	this->JB = Eigen::MatrixXd::Zero( 6,  this->nq );
 
 	// Initialize the Joint Twists and A Matrices
-	this->JointTwists = Eigen::MatrixXd::Zero( 	   		  6,  this->nq );
-	this->A_Mat1 	  = Eigen::MatrixXd::Zero( 		      6,  this->nq );
+	this->JointTwists = Eigen::MatrixXd::Zero( 6,  this->nq );
+	this->A_Mat1 	  = Eigen::MatrixXd::Zero( 6,  this->nq );
 	this->A_Mat2 	  = Eigen::MatrixXd::Zero( 6 * this->nq,  this->nq );
 
 	// Initialize the Mass Matrices
